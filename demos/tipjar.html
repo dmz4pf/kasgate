@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KasGate Tip Jar Demo - Creator Tipping</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0f;
+      min-height: 100vh;
+      color: #fff;
+    }
+
+    .profile-header {
+      text-align: center;
+      padding: 60px 20px 40px;
+      background: linear-gradient(180deg, rgba(73, 234, 203, 0.1) 0%, transparent 100%);
+    }
+
+    .avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #49EACB 0%, #3DD4B7 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      margin: 0 auto 20px;
+      box-shadow: 0 10px 40px rgba(73, 234, 203, 0.3);
+    }
+
+    .username {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .bio {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 1rem;
+      max-width: 400px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 30px;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #49EACB;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 4px;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+    }
+
+    .tip-card {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 24px;
+      padding: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .tip-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .tip-amounts {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .tip-btn {
+      flex: 1;
+      padding: 20px 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .tip-btn:hover {
+      background: rgba(73, 234, 203, 0.1);
+      border-color: rgba(73, 234, 203, 0.3);
+    }
+
+    .tip-btn.selected {
+      background: rgba(73, 234, 203, 0.15);
+      border-color: #49EACB;
+    }
+
+    .tip-emoji {
+      font-size: 1.75rem;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .tip-amount {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .tip-label {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 4px;
+    }
+
+    .message-input {
+      width: 100%;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: white;
+      font-size: 1rem;
+      resize: none;
+      margin-bottom: 20px;
+    }
+
+    .message-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .message-input:focus {
+      outline: none;
+      border-color: #49EACB;
+    }
+
+    .send-tip-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, #49EACB 0%, #3DD4B7 100%);
+      border: none;
+      border-radius: 14px;
+      color: #0a0a0f;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .send-tip-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 10px 30px rgba(73, 234, 203, 0.3);
+    }
+
+    #paymentContainer {
+      margin-top: 24px;
+    }
+
+    .recent-tips {
+      margin-top: 40px;
+    }
+
+    .recent-tips h3 {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .tip-history {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .tip-entry {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+    }
+
+    .tip-entry-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .tip-entry-info {
+      flex: 1;
+    }
+
+    .tip-entry-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .tip-entry-message {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: 2px;
+    }
+
+    .tip-entry-amount {
+      font-weight: 700;
+      color: #49EACB;
+    }
+
+    .config-panel {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+    }
+
+    .config-panel h4 {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.4);
+      margin-bottom: 12px;
+    }
+
+    .config-panel input {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: white;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .config-panel input:focus {
+      outline: none;
+      border-color: #49EACB;
+    }
+  </style>
+</head>
+<body>
+  <div class="profile-header">
+    <div class="avatar">🎨</div>
+    <h1 class="username">@creativekaspa</h1>
+    <p class="bio">Digital artist & Kaspa enthusiast. Creating NFTs and spreading the word about fast, scalable crypto.</p>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">1.2K</div>
+        <div class="stat-label">Supporters</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">5,420</div>
+        <div class="stat-label">KAS Received</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="tip-card">
+      <h2 class="tip-title">Send a Tip ✨</h2>
+
+      <div id="tipForm">
+        <div class="tip-amounts">
+          <button class="tip-btn" onclick="selectTip('5', this)">
+            <span class="tip-emoji">☕</span>
+            <span class="tip-amount">5 KAS</span>
+            <span class="tip-label">Coffee</span>
+          </button>
+          <button class="tip-btn" onclick="selectTip('15', this)">
+            <span class="tip-emoji">🍕</span>
+            <span class="tip-amount">15 KAS</span>
+            <span class="tip-label">Pizza</span>
+          </button>
+          <button class="tip-btn" onclick="selectTip('50', this)">
+            <span class="tip-emoji">🎁</span>
+            <span class="tip-amount">50 KAS</span>
+            <span class="tip-label">Gift</span>
+          </button>
+        </div>
+
+        <textarea class="message-input" id="tipMessage" rows="3" placeholder="Add a message (optional)"></textarea>
+
+        <button class="send-tip-btn" onclick="sendTip()">Send Tip with Kaspa 💜</button>
+      </div>
+
+      <div id="paymentContainer"></div>
+
+      <div class="config-panel">
+        <h4>Demo Configuration</h4>
+        <input type="text" id="serverUrl" value="http://localhost:3000" placeholder="Server URL">
+        <input type="text" id="apiKey" placeholder="API Key">
+      </div>
+    </div>
+
+    <div class="recent-tips">
+      <h3>Recent Tips</h3>
+      <div class="tip-history">
+        <div class="tip-entry">
+          <div class="tip-entry-avatar">🦊</div>
+          <div class="tip-entry-info">
+            <div class="tip-entry-name">Anonymous</div>
+            <div class="tip-entry-message">Keep up the great work!</div>
+          </div>
+          <div class="tip-entry-amount">50 KAS</div>
+        </div>
+        <div class="tip-entry">
+          <div class="tip-entry-avatar">🐸</div>
+          <div class="tip-entry-info">
+            <div class="tip-entry-name">KaspaFan</div>
+            <div class="tip-entry-message">Love your art 🎨</div>
+          </div>
+          <div class="tip-entry-amount">15 KAS</div>
+        </div>
+        <div class="tip-entry">
+          <div class="tip-entry-avatar">🌙</div>
+          <div class="tip-entry-info">
+            <div class="tip-entry-name">NightOwl</div>
+            <div class="tip-entry-message">Here's a coffee on me!</div>
+          </div>
+          <div class="tip-entry-amount">5 KAS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/widget/kasgate.js"></script>
+  <script>
+    let selectedAmount = null;
+    let currentWidget = null;
+
+    function selectTip(amount, button) {
+      selectedAmount = amount;
+
+      document.querySelectorAll('.tip-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+      button.classList.add('selected');
+    }
+
+    function sendTip() {
+      const serverUrl = document.getElementById('serverUrl').value;
+      const apiKey = document.getElementById('apiKey').value;
+      const message = document.getElementById('tipMessage').value;
+
+      if (!apiKey) {
+        alert('Please enter your API key');
+        return;
+      }
+
+      if (!selectedAmount) {
+        alert('Please select a tip amount');
+        return;
+      }
+
+      // Hide form
+      document.getElementById('tipForm').style.display = 'none';
+
+      // Create widget
+      currentWidget = KasGate.createPayment('#paymentContainer', {
+        merchantId: 'demo-merchant-id',
+        amount: selectedAmount,
+        serverUrl: serverUrl,
+        apiKey: apiKey,
+        orderId: `TIP-${Date.now()}`,
+        metadata: {
+          type: 'tip',
+          message: message,
+          creator: 'creativekaspa'
+        },
+        theme: 'dark',
+        onConfirmed: (session) => {
+          // Add to tip history
+          const tipEntry = document.createElement('div');
+          tipEntry.className = 'tip-entry';
+          tipEntry.innerHTML = `
+            <div class="tip-entry-avatar">😊</div>
+            <div class="tip-entry-info">
+              <div class="tip-entry-name">You</div>
+              <div class="tip-entry-message">${message || 'Thanks!'}</div>
+            </div>
+            <div class="tip-entry-amount">${selectedAmount} KAS</div>
+          `;
+
+          const history = document.querySelector('.tip-history');
+          history.insertBefore(tipEntry, history.firstChild);
+
+          setTimeout(() => {
+            resetTip();
+            alert('Thank you for your tip! 💜');
+          }, 2000);
+        },
+        onExpired: () => {
+          resetTip();
+        },
+        onError: (error) => {
+          console.error('Tip error:', error);
+          resetTip();
+        }
+      });
+    }
+
+    function resetTip() {
+      selectedAmount = null;
+      document.getElementById('tipMessage').value = '';
+      document.querySelectorAll('.tip-btn').forEach(btn => btn.classList.remove('selected'));
+      document.getElementById('paymentContainer').innerHTML = '';
+      document.getElementById('tipForm').style.display = 'block';
+
+      if (currentWidget) {
+        currentWidget.reset();
+        currentWidget = null;
+      }
+    }
+  </script>
+</body>
+</html>

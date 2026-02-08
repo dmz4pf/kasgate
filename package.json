@@ -1,0 +1,63 @@
+{
+  "name": "kasgate",
+  "version": "1.0.0",
+  "description": "Universal Kaspa Payment Widget - Accept KAS payments on any website",
+  "type": "module",
+  "main": "dist/server/index.js",
+  "scripts": {
+    "dev": "tsx watch src/server/index.ts",
+    "build": "npm run build:server && npm run build:widget",
+    "build:server": "esbuild src/server/index.ts --bundle --platform=node --outdir=dist/server --format=esm --external:better-sqlite3 --external:@dfns/kaspa-wasm",
+    "build:widget": "esbuild src/widget/index.ts --bundle --outfile=dist/kasgate.js --format=iife --global-name=KasGate --minify",
+    "build:widget:dev": "esbuild src/widget/index.ts --bundle --outfile=dist/kasgate.js --format=iife --global-name=KasGate --sourcemap",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "db:reset": "rm -f data/kasgate.db && npm run dev"
+  },
+  "dependencies": {
+    "@dfns/kaspa-wasm": "^0.14.1",
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "isomorphic-ws": "^5.0.0",
+    "kaspa-wasm": "^0.13.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.0.4",
+    "websocket": "^1.0.35",
+    "ws": "^8.19.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.5",
+    "@types/qrcode": "^1.5.5",
+    "@types/uuid": "^10.0.0",
+    "@types/websocket": "^1.0.10",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.24.2",
+    "eslint": "^9.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "kaspa",
+    "payment",
+    "widget",
+    "crypto",
+    "blockchain",
+    "kas"
+  ],
+  "author": "KasGate Team",
+  "license": "MIT"
+}
