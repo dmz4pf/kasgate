@@ -94,12 +94,12 @@ export class WebhookService {
     // Sign the payload (includes timestamp and deliveryId for replay protection)
     const signature = this.signPayload(payload, merchant.webhook_secret || '');
 
-    // Create log entry
+    // Create log entry (Bug #14: store delivery_id for idempotency tracking)
     const logId = uuidv4();
     execute(
-      `INSERT INTO webhook_logs (id, webhook_id, session_id, event, payload, attempts, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
-      [logId, '', session.id, event, toJson(payload), 0]
+      `INSERT INTO webhook_logs (id, webhook_id, session_id, event, payload, delivery_id, attempts, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [logId, '', session.id, event, toJson(payload), deliveryId, 0]
     );
 
     // Attempt delivery

@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS webhook_logs (
   session_id TEXT NOT NULL REFERENCES sessions(id),
   event TEXT NOT NULL,
   payload TEXT NOT NULL,  -- JSON string
+  delivery_id TEXT,  -- Bug #14: Unique ID for replay protection/idempotency
   status_code INTEGER,
   response TEXT,
   attempts INTEGER DEFAULT 0,
@@ -84,4 +85,7 @@ ALTER TABLE merchants ADD COLUMN api_key_hash TEXT;
 
 -- Add subscription_token for WebSocket authentication (Bug #5)
 ALTER TABLE sessions ADD COLUMN subscription_token TEXT;
+
+-- Add delivery_id for webhook replay protection/idempotency (Bug #14)
+ALTER TABLE webhook_logs ADD COLUMN delivery_id TEXT;
 `;

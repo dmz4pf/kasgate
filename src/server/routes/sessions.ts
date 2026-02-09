@@ -131,8 +131,15 @@ router.post(
           return;
         }
 
-        // Mark payment as received
-        sessionManager.markPaymentReceived(session.id, txId);
+        // Mark payment as received (Bug #12: atomic check for expiry)
+        const accepted = sessionManager.markPaymentReceived(session.id, txId);
+
+        if (!accepted) {
+          // Payment rejected (session expired or invalid state)
+          console.warn(`[KasGate] Payment for session ${session.id} rejected - session expired or invalid`);
+          await paymentMonitor.unmonitor(address);
+          return;
+        }
 
         // Start confirmation tracking
         const confirmationTracker = getConfirmationTracker();

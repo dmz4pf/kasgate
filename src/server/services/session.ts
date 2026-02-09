@@ -191,25 +191,39 @@ export class SessionManager {
   /**
    * Update session status to confirming (payment detected)
    * Bug #30: Validates state transition before update
+   * Bug #12 fix: Atomic database-level check to prevent race condition
+   *              where session expires between check and update
+   *
+   * @returns true if payment was accepted, false if session was expired/invalid
    */
-  markPaymentReceived(sessionId: string, txId: string): void {
-    const session = this.getSession(sessionId);
-    if (!session) {
-      console.warn(`[KasGate] Cannot mark payment received - session ${sessionId} not found`);
-      return;
-    }
-
-    // Bug #30: Validate transition
-    assertValidTransition(session.status, 'confirming', sessionId);
-
-    execute(
+  markPaymentReceived(sessionId: string, txId: string): boolean {
+    // Bug #12 fix: Atomic UPDATE that checks both status AND expiry in one operation
+    // This prevents the race condition where session expires between getSession() and execute()
+    const result = execute(
       `UPDATE sessions
-       SET status = ?, tx_id = ?, paid_at = datetime('now')
-       WHERE id = ?`,
-      ['confirming', txId, sessionId]
+       SET status = 'confirming', tx_id = ?, paid_at = datetime('now')
+       WHERE id = ? AND status = 'pending' AND expires_at > datetime('now')`,
+      [txId, sessionId]
     );
 
+    if (result.changes === 0) {
+      // No rows updated - session either doesn't exist, is not pending, or is expired
+      const session = this.getSession(sessionId);
+      if (!session) {
+        console.warn(`[KasGate] Cannot mark payment received - session ${sessionId} not found`);
+      } else if (session.status !== 'pending') {
+        console.warn(`[KasGate] Cannot mark payment received - session ${sessionId} status is ${session.status}`);
+      } else {
+        // Session exists and is pending, but expires_at has passed
+        console.warn(`[KasGate] Cannot mark payment received - session ${sessionId} has expired`);
+        // Mark it as expired
+        this.markExpired(sessionId);
+      }
+      return false;
+    }
+
     console.log(`[KasGate] Session ${sessionId} payment received: ${txId}`);
+    return true;
   }
 
   /**
