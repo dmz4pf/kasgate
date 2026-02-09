@@ -128,9 +128,16 @@ export class PaymentMonitor {
   async initialize(): Promise<void> {
     try {
       await this.rpcManager.connect();
-      console.log('[KasGate] Payment monitor initialized with RPC');
+
+      // Check if connection actually succeeded (connect() doesn't throw on failure)
+      if (!this.rpcManager.isConnected()) {
+        console.warn('[KasGate] RPC connection failed, using REST fallback');
+        this.useRpcPrimary = false;
+      } else {
+        console.log('[KasGate] Payment monitor initialized with RPC');
+      }
     } catch (error) {
-      console.warn('[KasGate] RPC connection failed, using REST fallback:', error);
+      console.warn('[KasGate] RPC connection error, using REST fallback:', error);
       this.useRpcPrimary = false;
     }
   }
