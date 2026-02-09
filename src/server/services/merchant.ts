@@ -179,7 +179,7 @@ export class MerchantService {
       return merchant;
     }
 
-    updates.push('updated_at = datetime("now")');
+    updates.push("updated_at = datetime('now')");
     params.push(merchantId);
 
     execute(
@@ -202,7 +202,7 @@ export class MerchantService {
     const newApiKey = this.generateApiKey();
 
     execute(
-      'UPDATE merchants SET api_key = ?, updated_at = datetime("now") WHERE id = ?',
+      "UPDATE merchants SET api_key = ?, updated_at = datetime('now') WHERE id = ?",
       [newApiKey, merchantId]
     );
 
@@ -221,7 +221,7 @@ export class MerchantService {
     const newSecret = this.generateWebhookSecret();
 
     execute(
-      'UPDATE merchants SET webhook_secret = ?, updated_at = datetime("now") WHERE id = ?',
+      "UPDATE merchants SET webhook_secret = ?, updated_at = datetime('now') WHERE id = ?",
       [newSecret, merchantId]
     );
 

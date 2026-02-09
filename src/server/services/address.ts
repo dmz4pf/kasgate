@@ -108,7 +108,7 @@ export class AddressService {
 
     // Increment the index in the database
     execute(
-      'UPDATE merchants SET next_address_index = next_address_index + 1, updated_at = datetime("now") WHERE id = ?',
+      "UPDATE merchants SET next_address_index = next_address_index + 1, updated_at = datetime('now') WHERE id = ?",
       [merchantId]
     );
 

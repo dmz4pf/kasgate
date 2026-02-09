@@ -95,8 +95,8 @@ export const apiKeySchema = z.string().min(32).max(64).regex(/^[a-zA-Z0-9_-]+$/,
 /**
  * xPub key format (extended public key)
  */
-export const xpubSchema = z.string().regex(/^xpub[a-zA-Z0-9]{100,120}$/, {
-  message: 'Invalid xPub format',
+export const xpubSchema = z.string().regex(/^(xpub|kpub)[a-zA-Z0-9]{90,130}$/, {
+  message: 'Invalid xPub format (must start with xpub or kpub)',
 });
 
 /**

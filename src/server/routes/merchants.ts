@@ -20,14 +20,14 @@ const router = Router();
 const createMerchantSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email().optional(),
-  xpub: z.string().regex(/^xpub[a-zA-Z0-9]{100,120}$/, 'Invalid xPub format'),
+  xpub: z.string().regex(/^(xpub|kpub)[a-zA-Z0-9]{90,130}$/, 'Invalid xPub format'),
   webhookUrl: z.string().url().optional(),
 });
 
 const updateMerchantSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
-  xpub: z.string().regex(/^xpub[a-zA-Z0-9]{100,120}$/, 'Invalid xPub format').optional(),
+  xpub: z.string().regex(/^(xpub|kpub)[a-zA-Z0-9]{90,130}$/, 'Invalid xPub format').optional(),
   webhookUrl: z.string().url().optional(),
 });
 

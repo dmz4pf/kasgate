@@ -31,13 +31,17 @@ async function initializeServices(): Promise<void> {
   // Initialize Kaspa WASM
   await initKaspa();
 
-  // Initialize payment monitor
+  // Initialize payment monitor (non-blocking - connects in background)
   const paymentMonitor = getPaymentMonitor();
-  await paymentMonitor.initialize();
+  paymentMonitor.initialize().catch((err) => {
+    console.warn('[KasGate] Payment monitor init warning:', err.message);
+  });
 
-  // Initialize confirmation tracker
+  // Initialize confirmation tracker (non-blocking)
   const confirmationTracker = getConfirmationTracker();
-  await confirmationTracker.initialize();
+  confirmationTracker.initialize().catch((err) => {
+    console.warn('[KasGate] Confirmation tracker init warning:', err.message);
+  });
 
   // Start webhook retry worker
   const webhookService = getWebhookService();
