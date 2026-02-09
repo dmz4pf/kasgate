@@ -34,6 +34,9 @@ export interface RpcEventHandlers {
 // RPC MANAGER CLASS
 // ============================================================
 
+// Maximum reconnection attempts before giving up (Bug #10 fix)
+const MAX_RECONNECT_ATTEMPTS = 50;
+
 export class RpcManager {
   private client: RpcClient | null = null;
   private state: RpcConnectionState = 'disconnected';
@@ -306,6 +309,13 @@ export class RpcManager {
   }
 
   private mapUtxo(entry: any): Utxo {
+    // Bug #1 fix: Extract address from UTXO entry (RPC notification includes it)
+    let address: string | undefined;
+    if (entry.address) {
+      // Address might be a string or an Address object with toString()
+      address = typeof entry.address === 'string' ? entry.address : entry.address.toString?.();
+    }
+
     return {
       transactionId: entry.outpoint?.transactionId || entry.transactionId,
       index: entry.outpoint?.index || entry.index || 0,
@@ -313,6 +323,7 @@ export class RpcManager {
       scriptPublicKey: entry.utxoEntry?.scriptPublicKey || entry.scriptPublicKey || '',
       blockDaaScore: BigInt(entry.utxoEntry?.blockDaaScore || entry.blockDaaScore || 0),
       isCoinbase: entry.utxoEntry?.isCoinbase || entry.isCoinbase || false,
+      address,
     };
   }
 
@@ -325,13 +336,24 @@ export class RpcManager {
   private scheduleReconnect(): void {
     if (this.reconnectTimeout) return;
 
-    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
-    const delay = Math.min(
+    // Bug #10 fix: Stop after max attempts
+    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.error(`[KasGate] RPC max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
+      this.setState('disconnected');
+      this.handlers.onError?.(new Error(`Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached`));
+      return;
+    }
+
+    // Exponential backoff with jitter (Bug #29 fix): 1s, 2s, 4s, 8s, 16s, max 30s
+    const baseDelay = Math.min(
       RPC_RECONNECT_BASE_MS * Math.pow(2, this.reconnectAttempts),
       RPC_RECONNECT_MAX_MS
     );
+    // Add 50-100% jitter to prevent thundering herd
+    const jitter = 0.5 + Math.random() * 0.5;
+    const delay = Math.floor(baseDelay * jitter);
 
-    console.log(`[KasGate] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1})`);
+    console.log(`[KasGate] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
 
     this.reconnectTimeout = setTimeout(async () => {
       this.reconnectTimeout = null;

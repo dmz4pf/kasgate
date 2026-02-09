@@ -10,6 +10,7 @@ import { asyncHandler, ApiError } from '../middleware/error.js';
 import { getMerchantService } from '../services/merchant.js';
 import { getSessionManager } from '../services/session.js';
 import { sompiToKas } from '../../kaspa/units.js';
+import { validateXPubWithWasm } from '../../shared/validation.js';
 
 const router = Router();
 
@@ -17,17 +18,24 @@ const router = Router();
 // SCHEMAS
 // ============================================================
 
+// Bug #19: XPub validation with kaspa-wasm library
+const xpubValidation = z.string()
+  .regex(/^(xpub|kpub)[a-zA-Z0-9]{90,130}$/, 'Invalid xPub format')
+  .refine((xpub) => validateXPubWithWasm(xpub), {
+    message: 'Invalid xPub key - could not parse as valid extended public key',
+  });
+
 const createMerchantSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email().optional(),
-  xpub: z.string().regex(/^(xpub|kpub)[a-zA-Z0-9]{90,130}$/, 'Invalid xPub format'),
+  xpub: xpubValidation,
   webhookUrl: z.string().url().optional(),
 });
 
 const updateMerchantSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
-  xpub: z.string().regex(/^(xpub|kpub)[a-zA-Z0-9]{90,130}$/, 'Invalid xPub format').optional(),
+  xpub: xpubValidation.optional(),
   webhookUrl: z.string().url().optional(),
 });
 

@@ -31,6 +31,7 @@ interface MerchantRow {
   email: string | null;
   xpub: string;
   api_key: string;
+  api_key_hash: string | null;
   webhook_url: string | null;
   webhook_secret: string | null;
   next_address_index: number;
@@ -63,20 +64,22 @@ export class MerchantService {
   createMerchant(input: CreateMerchantInput): Merchant {
     const id = uuidv4();
     const apiKey = this.generateApiKey();
+    const apiKeyHash = this.hashApiKey(apiKey);
     const webhookSecret = this.generateWebhookSecret();
     const now = new Date();
 
     execute(
       `INSERT INTO merchants (
-        id, name, email, xpub, api_key, webhook_url, webhook_secret,
+        id, name, email, xpub, api_key, api_key_hash, webhook_url, webhook_secret,
         next_address_index, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.name,
         input.email || null,
         input.xpub,
         apiKey,
+        apiKeyHash,
         input.webhookUrl || null,
         webhookSecret,
         0,
@@ -200,10 +203,11 @@ export class MerchantService {
     if (!merchant) return null;
 
     const newApiKey = this.generateApiKey();
+    const newApiKeyHash = this.hashApiKey(newApiKey);
 
     execute(
-      "UPDATE merchants SET api_key = ?, updated_at = datetime('now') WHERE id = ?",
-      [newApiKey, merchantId]
+      "UPDATE merchants SET api_key = ?, api_key_hash = ?, updated_at = datetime('now') WHERE id = ?",
+      [newApiKey, newApiKeyHash, merchantId]
     );
 
     console.log(`[KasGate] Regenerated API key for merchant ${merchantId}`);
@@ -259,10 +263,46 @@ export class MerchantService {
   }
 
   /**
-   * Verify an API key is valid
+   * Verify an API key is valid (timing-safe - Bug #3 fix)
    */
   verifyApiKey(apiKey: string): Merchant | null {
-    return this.getMerchantByApiKey(apiKey);
+    const apiKeyHash = this.hashApiKey(apiKey);
+
+    // Look up by hash for timing-safe verification
+    const row = queryOne<MerchantRow>(
+      'SELECT * FROM merchants WHERE api_key_hash = ?',
+      [apiKeyHash]
+    );
+
+    if (row) {
+      return this.rowToMerchant(row);
+    }
+
+    // Fallback: check old merchants without hash (backwards compatibility)
+    // Also backfill the hash for future lookups
+    const legacyRow = queryOne<MerchantRow>(
+      'SELECT * FROM merchants WHERE api_key = ? AND api_key_hash IS NULL',
+      [apiKey]
+    );
+
+    if (legacyRow) {
+      // Backfill the hash
+      execute(
+        'UPDATE merchants SET api_key_hash = ? WHERE id = ?',
+        [apiKeyHash, legacyRow.id]
+      );
+      return this.rowToMerchant(legacyRow);
+    }
+
+    // Constant-time: perform dummy comparison to prevent timing leak
+    const dummyHash = this.hashApiKey('dummy_key_for_timing_safety');
+    try {
+      crypto.timingSafeEqual(Buffer.from(apiKeyHash), Buffer.from(dummyHash));
+    } catch {
+      // Ignore length mismatch errors
+    }
+
+    return null;
   }
 
   // ============================================================
@@ -294,6 +334,13 @@ export class MerchantService {
     // Format: whsec_[32 random chars]
     const random = crypto.randomBytes(24).toString('base64url');
     return `whsec_${random}`;
+  }
+
+  /**
+   * Hash an API key for secure storage and comparison (Bug #3 fix)
+   */
+  private hashApiKey(apiKey: string): string {
+    return crypto.createHash('sha256').update(apiKey).digest('hex');
   }
 }
 

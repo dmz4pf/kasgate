@@ -63,9 +63,9 @@ export class ExplorerClient {
         return 'https://api.kaspa.org';
       case 'testnet-10':
         return 'https://api-tn10.kaspa.org';
-      case 'testnet-11':
-        return 'https://api-tn11.kaspa.org';
       default:
+        // Fallback for any unhandled networks (exhaustive check)
+        const _exhaustive: never = network;
         return 'https://api-tn10.kaspa.org';
     }
   }

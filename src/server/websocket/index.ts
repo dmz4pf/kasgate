@@ -102,9 +102,15 @@ export class WebSocketManager {
   private handleConnection(socket: Socket): void {
     console.log(`[KasGate] WebSocket client connected: ${socket.id}`);
 
-    // Handle session subscription
-    socket.on('subscribe', (sessionId: string) => {
-      this.subscribeToSession(socket, sessionId);
+    // Handle session subscription (now requires token - Bug #5 fix)
+    socket.on('subscribe', (data: { sessionId: string; token: string } | string) => {
+      // Support both old format (string) and new format (object with token)
+      if (typeof data === 'string') {
+        // Legacy: reject subscription without token
+        socket.emit('error', { message: 'Subscription token required. Use { sessionId, token } format.' });
+        return;
+      }
+      this.subscribeToSession(socket, data.sessionId, data.token);
     });
 
     // Handle unsubscription
@@ -123,9 +129,16 @@ export class WebSocketManager {
     });
   }
 
-  private subscribeToSession(socket: Socket, sessionId: string): void {
-    // Validate session exists
+  private subscribeToSession(socket: Socket, sessionId: string, token: string): void {
     const sessionManager = getSessionManager();
+
+    // Verify subscription token (Bug #5 fix)
+    if (!sessionManager.verifySubscriptionToken(sessionId, token)) {
+      socket.emit('error', { message: 'Invalid subscription token' });
+      return;
+    }
+
+    // Validate session exists
     const session = sessionManager.getSession(sessionId);
 
     if (!session) {

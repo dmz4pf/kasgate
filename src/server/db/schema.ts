@@ -79,5 +79,9 @@ CREATE INDEX IF NOT EXISTS idx_webhook_logs_retry ON webhook_logs(next_retry_at)
  * Migration to add any missing columns (for upgrades)
  */
 export const MIGRATIONS = `
--- Future migrations can be added here
+-- Add api_key_hash for timing-safe API key verification (Bug #3)
+ALTER TABLE merchants ADD COLUMN api_key_hash TEXT;
+
+-- Add subscription_token for WebSocket authentication (Bug #5)
+ALTER TABLE sessions ADD COLUMN subscription_token TEXT;
 `;

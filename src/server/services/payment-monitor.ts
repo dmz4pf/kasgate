@@ -33,6 +33,8 @@ export class PaymentMonitor {
   private rpcManager: RpcManager;
   private restPoller: RestPoller;
   private monitoredAddresses: Map<string, MonitoredAddress> = new Map();
+  // Bug #1 fix: Map script public key to address for efficient UTXO matching
+  private scriptToAddress: Map<string, string> = new Map();
   private useRpcPrimary = true;
 
   constructor() {
@@ -74,12 +76,39 @@ export class PaymentMonitor {
     if (useRpc) {
       try {
         await this.rpcManager.subscribeAddress(address);
+
+        // Bug #1 fix: Populate scriptToAddress map for fallback matching
+        // Fetch existing UTXOs to learn the scriptPublicKey for this address
+        this.populateScriptMapping(address);
       } catch (error) {
         console.error('[KasGate] RPC subscription failed, falling back to REST:', error);
         await this.switchToRest(address);
       }
     } else {
       this.startRestPolling(address);
+    }
+  }
+
+  /**
+   * Populate the scriptToAddress map for fallback UTXO matching (Bug #1 fix)
+   * This is async but we don't await it - it runs in background
+   */
+  private async populateScriptMapping(address: string): Promise<void> {
+    try {
+      if (!this.rpcManager.isConnected()) return;
+
+      const utxos = await this.rpcManager.getUtxos(address);
+      if (utxos.length > 0) {
+        // All UTXOs for an address share the same scriptPublicKey
+        const scriptPubKey = utxos[0].scriptPublicKey;
+        if (scriptPubKey) {
+          this.scriptToAddress.set(scriptPubKey, address);
+          console.log(`[KasGate] Mapped scriptPubKey for ${address.slice(0, 20)}...`);
+        }
+      }
+    } catch (error) {
+      // Non-critical - UTXO notifications should include address anyway
+      console.debug(`[KasGate] Could not populate script mapping for ${address.slice(0, 20)}:`, error);
     }
   }
 
@@ -91,6 +120,14 @@ export class PaymentMonitor {
     if (!monitored) return;
 
     this.monitoredAddresses.delete(address);
+
+    // Bug #1 fix: Clean up scriptToAddress mapping
+    for (const [script, addr] of this.scriptToAddress) {
+      if (addr === address) {
+        this.scriptToAddress.delete(script);
+        break;
+      }
+    }
 
     if (monitored.useRpc) {
       await this.rpcManager.unsubscribeAddress(address);
@@ -165,13 +202,43 @@ export class PaymentMonitor {
   // ============================================================
 
   private handleRpcUtxoChange(notification: UtxoChangedNotification): void {
-    // Process added UTXOs
+    // Bug #1 fix: Group UTXOs by address for efficient processing
+    // RPC notification includes address in UTXO entries
+
+    // Group added UTXOs by their address
+    const utxosByAddress = new Map<string, typeof notification.added>();
+
     for (const utxo of notification.added) {
-      // Find which monitored address this UTXO belongs to
-      for (const [address, monitored] of this.monitoredAddresses) {
-        // Check if this UTXO was sent to the monitored address
-        // We need to check the script public key matches
-        this.checkUtxoForAddress(address, monitored, [utxo]);
+      // Try to get address from UTXO (preferred - from RPC notification)
+      let address = utxo.address;
+
+      // Fallback: lookup by scriptPublicKey if address not included
+      if (!address) {
+        address = this.scriptToAddress.get(utxo.scriptPublicKey);
+      }
+
+      if (!address) {
+        // Unknown address - not one we're monitoring
+        continue;
+      }
+
+      // Only process if we're monitoring this address
+      if (!this.monitoredAddresses.has(address)) {
+        continue;
+      }
+
+      // Group UTXOs by address
+      if (!utxosByAddress.has(address)) {
+        utxosByAddress.set(address, []);
+      }
+      utxosByAddress.get(address)!.push(utxo);
+    }
+
+    // Process each address's UTXOs
+    for (const [address, utxos] of utxosByAddress) {
+      const monitored = this.monitoredAddresses.get(address);
+      if (monitored) {
+        this.checkUtxoForAddress(address, monitored, utxos);
       }
     }
   }
@@ -181,16 +248,25 @@ export class PaymentMonitor {
     monitored: MonitoredAddress,
     utxos: Utxo[]
   ): Promise<void> {
-    // Calculate total amount from UTXOs
-    const totalAmount = utxos.reduce((sum, u) => sum + u.amount, 0n);
+    // Bug #13 fix: Filter out UTXOs with DAA score of 0 (still in mempool)
+    // UTXOs need at least 1 DAA score to be considered (orphan protection)
+    const confirmedUtxos = utxos.filter((u) => u.blockDaaScore > 0n);
+
+    if (confirmedUtxos.length === 0 && utxos.length > 0) {
+      console.log(`[KasGate] Payment for ${address.slice(0, 20)} still in mempool, waiting for block inclusion`);
+      return;
+    }
+
+    // Calculate total amount from confirmed UTXOs only
+    const totalAmount = confirmedUtxos.reduce((sum, u) => sum + u.amount, 0n);
 
     if (totalAmount >= monitored.expectedAmount) {
       // Get the first UTXO's transaction ID
-      const txId = utxos[0].transactionId;
+      const txId = confirmedUtxos[0].transactionId;
 
       console.log(`[KasGate] Payment detected for ${address.slice(0, 20)}: ${totalAmount} sompi`);
 
-      monitored.callback.onPaymentDetected(address, txId, totalAmount, utxos);
+      monitored.callback.onPaymentDetected(address, txId, totalAmount, confirmedUtxos);
     }
   }
 

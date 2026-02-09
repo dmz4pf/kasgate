@@ -6,6 +6,32 @@ import { z } from 'zod';
 import { NETWORK_CONFIG } from '../config/network.js';
 import { SOMPI_PER_KAS, MIN_AMOUNT_SOMPI } from './constants.js';
 
+// Bug #19: XPub validation helper - cached module to prevent memory leaks
+let kaspaWasmModule: any = null;
+
+/**
+ * Bug #19: Validate XPub using kaspa-wasm library
+ * Returns true if valid, false if invalid
+ * Note: Module is cached to prevent memory leaks from repeated require()
+ */
+export function validateXPubWithWasm(xpub: string): boolean {
+  try {
+    // Cache the WASM module to prevent memory leaks
+    if (!kaspaWasmModule) {
+      kaspaWasmModule = require('@dfns/kaspa-wasm');
+    }
+    const xpubInstance = new kaspaWasmModule.XPub(xpub);
+    // Free the instance to avoid memory leaks
+    if (typeof xpubInstance.free === 'function') {
+      xpubInstance.free();
+    }
+    return true;
+  } catch (error) {
+    // XPub parsing failed - invalid format or key
+    return false;
+  }
+}
+
 // ============================================================
 // ADDRESS VALIDATION
 // ============================================================
@@ -150,6 +176,12 @@ export type WebhookEvent = z.infer<typeof webhookEventSchema>;
 
 /**
  * Webhook payload
+ *
+ * Replay Protection (Bug #14):
+ * - Each delivery has a unique `deliveryId` for idempotency
+ * - `timestamp` is included in the HMAC signature
+ * - Merchants should verify the timestamp is within 5 minutes of current time
+ * - Merchants should track deliveryId to prevent duplicate processing
  */
 export const webhookPayloadSchema = z.object({
   event: webhookEventSchema,
@@ -162,6 +194,7 @@ export const webhookPayloadSchema = z.object({
   orderId: z.string().optional(),
   metadata: z.record(z.string()).optional(),
   timestamp: z.string().datetime(),
+  deliveryId: z.string().uuid(), // Bug #14: Unique ID for idempotency/replay protection
 });
 
 export type WebhookPayload = z.infer<typeof webhookPayloadSchema>;

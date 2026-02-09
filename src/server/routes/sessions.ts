@@ -22,10 +22,55 @@ const router = Router();
 // SCHEMAS
 // ============================================================
 
+/**
+ * Bug #27: Sanitize string to remove ALL HTML tags and dangerous content
+ * Strip all HTML rather than blocklist approach to prevent XSS bypasses
+ */
+function sanitizeString(str: string): string {
+  // Remove ALL HTML tags - safer than trying to blocklist specific tags
+  let sanitized = str.replace(/<[^>]*>/g, '');
+  // Remove javascript: and data: protocols
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/data:/gi, '');
+  // Remove any remaining event handlers (belt and suspenders)
+  sanitized = sanitized.replace(/\bon\w+\s*=/gi, '');
+  return sanitized.trim();
+}
+
+/**
+ * Bug #27: Metadata schema with size limit and sanitization
+ * - Max 1KB total size
+ * - Max 20 keys
+ * - Keys max 50 chars, values max 500 chars
+ * - Script tags stripped
+ */
+const sanitizedMetadataSchema = z.record(z.string()).optional()
+  .transform((metadata) => {
+    if (!metadata) return metadata;
+
+    // Sanitize all values
+    const sanitized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(metadata)) {
+      sanitized[sanitizeString(key).slice(0, 50)] = sanitizeString(value).slice(0, 500);
+    }
+    return sanitized;
+  })
+  .refine((metadata) => {
+    if (!metadata) return true;
+    // Max 20 keys
+    if (Object.keys(metadata).length > 20) return false;
+    // Max 1KB total size
+    const totalSize = JSON.stringify(metadata).length;
+    return totalSize <= 1024;
+  }, {
+    message: 'Metadata too large (max 20 keys, 1KB total)',
+  });
+
 const createSessionSchema = z.object({
   amount: z.string().regex(/^\d+(\.\d{1,8})?$/, 'Invalid amount format'),
-  orderId: z.string().max(100).optional(),
-  metadata: z.record(z.string()).optional(),
+  orderId: z.string().max(100).optional()
+    .transform((v) => v ? sanitizeString(v) : v),
+  metadata: sanitizedMetadataSchema,
   redirectUrl: z.string().url().optional(),
 });
 
@@ -65,6 +110,27 @@ router.post(
     const paymentMonitor = getPaymentMonitor();
     await paymentMonitor.monitor(session.address, amountSompi, {
       onPaymentDetected: async (address, txId, detectedAmount, utxos) => {
+        // Bug #12 fix: Check if session has expired before accepting payment
+        const currentSession = sessionManager.getSession(session.id);
+        if (!currentSession) {
+          console.warn(`[KasGate] Session ${session.id} no longer exists, ignoring payment`);
+          await paymentMonitor.unmonitor(address);
+          return;
+        }
+
+        if (currentSession.expiresAt < new Date()) {
+          console.warn(`[KasGate] Session ${session.id} expired, rejecting payment`);
+          sessionManager.markExpired(session.id);
+          await paymentMonitor.unmonitor(address);
+          return;
+        }
+
+        if (currentSession.status !== 'pending') {
+          console.warn(`[KasGate] Session ${session.id} not pending (${currentSession.status}), ignoring payment`);
+          await paymentMonitor.unmonitor(address);
+          return;
+        }
+
         // Mark payment as received
         sessionManager.markPaymentReceived(session.id, txId);
 
@@ -115,6 +181,7 @@ router.post(
       status: session.status,
       orderId: session.orderId,
       qrCode: qrCodeDataUrl,
+      subscriptionToken: session.subscriptionToken, // Bug #5: For WebSocket auth
       expiresAt: session.expiresAt.toISOString(),
       explorerUrl: `${NETWORK_CONFIG.explorerUrl}/addresses/${session.address}`,
     });

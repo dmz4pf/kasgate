@@ -31,7 +31,7 @@ interface WatchedAddress {
 export class RestPoller {
   private watchedAddresses: Map<string, WatchedAddress> = new Map();
   private pollInterval: NodeJS.Timeout | null = null;
-  private isPolling = false;
+  private _isPolling = false;
 
   /**
    * Start watching an address for UTXO changes
@@ -82,6 +82,13 @@ export class RestPoller {
   }
 
   /**
+   * Check if currently polling (Bug #25: for health checks)
+   */
+  isPolling(): boolean {
+    return this.pollInterval !== null;
+  }
+
+  /**
    * Stop all polling
    */
   stop(): void {
@@ -115,9 +122,9 @@ export class RestPoller {
   }
 
   private async pollAll(): Promise<void> {
-    if (this.isPolling || this.watchedAddresses.size === 0) return;
+    if (this._isPolling || this.watchedAddresses.size === 0) return;
 
-    this.isPolling = true;
+    this._isPolling = true;
 
     try {
       const promises = Array.from(this.watchedAddresses.values()).map(
@@ -126,7 +133,7 @@ export class RestPoller {
 
       await Promise.allSettled(promises);
     } finally {
-      this.isPolling = false;
+      this._isPolling = false;
     }
   }
 

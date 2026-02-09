@@ -26,6 +26,8 @@ export interface Utxo {
   blockDaaScore: bigint;
   /** Whether this is a coinbase transaction */
   isCoinbase: boolean;
+  /** Address this UTXO belongs to (from RPC notification, Bug #1 fix) */
+  address?: string;
 }
 
 /**

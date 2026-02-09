@@ -5,6 +5,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { query, queryOne, execute, transaction, toJson, fromJson, toSqliteDate } from '../db/index.js';
 import { getAddressService } from './address.js';
 import { SESSION_EXPIRY_MINUTES } from '../../shared/constants.js';
@@ -13,6 +14,53 @@ import type { PaymentSession, PaymentStatus } from '../../kaspa/types.js';
 // ============================================================
 // TYPES
 // ============================================================
+
+/**
+ * Bug #30: Valid status transitions state machine
+ *
+ * Valid transitions:
+ * - pending → confirming (payment detected)
+ * - pending → expired (session timeout)
+ * - confirming → confirmed (enough confirmations reached)
+ * - confirming → failed (orphaned transaction, error)
+ * - pending → failed (system error)
+ *
+ * Invalid (skips required steps):
+ * - pending → confirmed (must go through confirming first)
+ * - expired → anything (terminal state)
+ * - confirmed → anything (terminal state)
+ * - failed → anything (terminal state)
+ */
+const VALID_TRANSITIONS: Record<PaymentStatus, PaymentStatus[]> = {
+  pending: ['confirming', 'expired', 'failed'],
+  confirming: ['confirmed', 'failed'],
+  confirmed: [], // Terminal state
+  expired: [], // Terminal state
+  failed: [], // Terminal state
+};
+
+/**
+ * Bug #30: Assert that a status transition is valid
+ * @throws Error if the transition is invalid
+ */
+function assertValidTransition(
+  currentStatus: PaymentStatus,
+  newStatus: PaymentStatus,
+  sessionId: string
+): void {
+  if (currentStatus === newStatus) {
+    // No-op, but not an error
+    return;
+  }
+
+  const validTargets = VALID_TRANSITIONS[currentStatus];
+
+  if (!validTargets.includes(newStatus)) {
+    const error = `Invalid session status transition: ${currentStatus} → ${newStatus} (session: ${sessionId}). Valid targets: [${validTargets.join(', ')}]`;
+    console.error(`[KasGate] ${error}`);
+    throw new Error(error);
+  }
+}
 
 interface SessionRow {
   id: string;
@@ -26,6 +74,7 @@ interface SessionRow {
   order_id: string | null;
   metadata: string | null;
   redirect_url: string | null;
+  subscription_token: string | null;
   created_at: string;
   expires_at: string;
   paid_at: string | null;
@@ -48,21 +97,22 @@ export class SessionManager {
   /**
    * Create a new payment session
    */
-  async createSession(input: CreateSessionInput): Promise<PaymentSession> {
+  async createSession(input: CreateSessionInput): Promise<PaymentSession & { subscriptionToken: string }> {
     const addressService = getAddressService();
 
     // Get the next unique address for this merchant
     const { address, index } = await addressService.getNextAddress(input.merchantId);
 
     const id = uuidv4();
+    const subscriptionToken = this.generateSubscriptionToken();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_EXPIRY_MINUTES * 60 * 1000);
 
     execute(
       `INSERT INTO sessions (
         id, merchant_id, address, address_index, amount, status,
-        order_id, metadata, redirect_url, created_at, expires_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        order_id, metadata, redirect_url, subscription_token, created_at, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.merchantId,
@@ -73,6 +123,7 @@ export class SessionManager {
         input.orderId || null,
         input.metadata ? toJson(input.metadata) : null,
         input.redirectUrl || null,
+        subscriptionToken,
         toSqliteDate(now),
         toSqliteDate(expiresAt),
       ]
@@ -91,6 +142,7 @@ export class SessionManager {
       metadata: input.metadata,
       createdAt: now,
       expiresAt,
+      subscriptionToken,
     };
   }
 
@@ -138,8 +190,18 @@ export class SessionManager {
 
   /**
    * Update session status to confirming (payment detected)
+   * Bug #30: Validates state transition before update
    */
   markPaymentReceived(sessionId: string, txId: string): void {
+    const session = this.getSession(sessionId);
+    if (!session) {
+      console.warn(`[KasGate] Cannot mark payment received - session ${sessionId} not found`);
+      return;
+    }
+
+    // Bug #30: Validate transition
+    assertValidTransition(session.status, 'confirming', sessionId);
+
     execute(
       `UPDATE sessions
        SET status = ?, tx_id = ?, paid_at = datetime('now')
@@ -162,8 +224,18 @@ export class SessionManager {
 
   /**
    * Mark session as confirmed
+   * Bug #30: Validates state transition before update
    */
   markConfirmed(sessionId: string, confirmations: number): void {
+    const session = this.getSession(sessionId);
+    if (!session) {
+      console.warn(`[KasGate] Cannot mark confirmed - session ${sessionId} not found`);
+      return;
+    }
+
+    // Bug #30: Validate transition
+    assertValidTransition(session.status, 'confirmed', sessionId);
+
     execute(
       `UPDATE sessions
        SET status = ?, confirmations = ?, confirmed_at = datetime('now')
@@ -176,8 +248,18 @@ export class SessionManager {
 
   /**
    * Mark session as expired
+   * Bug #30: Validates state transition before update
    */
   markExpired(sessionId: string): void {
+    const session = this.getSession(sessionId);
+    if (!session) {
+      console.warn(`[KasGate] Cannot mark expired - session ${sessionId} not found`);
+      return;
+    }
+
+    // Bug #30: Validate transition
+    assertValidTransition(session.status, 'expired', sessionId);
+
     execute(
       `UPDATE sessions SET status = ? WHERE id = ?`,
       ['expired', sessionId]
@@ -188,8 +270,18 @@ export class SessionManager {
 
   /**
    * Mark session as failed
+   * Bug #30: Validates state transition before update
    */
   markFailed(sessionId: string): void {
+    const session = this.getSession(sessionId);
+    if (!session) {
+      console.warn(`[KasGate] Cannot mark failed - session ${sessionId} not found`);
+      return;
+    }
+
+    // Bug #30: Validate transition
+    assertValidTransition(session.status, 'failed', sessionId);
+
     execute(
       `UPDATE sessions SET status = ? WHERE id = ?`,
       ['failed', sessionId]
@@ -278,9 +370,41 @@ export class SessionManager {
     };
   }
 
+  /**
+   * Verify a subscription token for WebSocket authentication (Bug #5 fix)
+   */
+  verifySubscriptionToken(sessionId: string, token: string): boolean {
+    const row = queryOne<{ subscription_token: string | null }>(
+      'SELECT subscription_token FROM sessions WHERE id = ?',
+      [sessionId]
+    );
+
+    if (!row?.subscription_token) {
+      return false;
+    }
+
+    // Timing-safe comparison
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(token),
+        Buffer.from(row.subscription_token)
+      );
+    } catch {
+      // Length mismatch
+      return false;
+    }
+  }
+
   // ============================================================
   // PRIVATE METHODS
   // ============================================================
+
+  /**
+   * Generate a secure subscription token (Bug #5 fix)
+   */
+  private generateSubscriptionToken(): string {
+    return crypto.randomBytes(32).toString('base64url');
+  }
 
   private rowToSession(row: SessionRow): PaymentSession {
     return {

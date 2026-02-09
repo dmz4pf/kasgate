@@ -55,6 +55,11 @@ export class WebhookService {
 
   /**
    * Send a webhook for a payment session
+   *
+   * Bug #14: Replay protection is implemented via:
+   * - Unique deliveryId per webhook delivery (for idempotency)
+   * - Timestamp included in HMAC signature (to prevent replay after window)
+   * - Merchants should verify timestamp is within 5 minutes of current time
    */
   async sendWebhook(session: PaymentSession, event: WebhookEvent): Promise<void> {
     // Get merchant webhook configuration
@@ -68,6 +73,9 @@ export class WebhookService {
       return;
     }
 
+    // Bug #14: Generate unique delivery ID for idempotency/replay protection
+    const deliveryId = uuidv4();
+
     // Create payload
     const payload: WebhookPayload = {
       event,
@@ -80,9 +88,10 @@ export class WebhookService {
       orderId: session.orderId,
       metadata: session.metadata,
       timestamp: new Date().toISOString(),
+      deliveryId, // Bug #14: Unique ID for idempotency
     };
 
-    // Sign the payload
+    // Sign the payload (includes timestamp and deliveryId for replay protection)
     const signature = this.signPayload(payload, merchant.webhook_secret || '');
 
     // Create log entry
@@ -185,6 +194,7 @@ export class WebhookService {
           'X-KasGate-Signature': signature,
           'X-KasGate-Event': payload.event,
           'X-KasGate-Timestamp': payload.timestamp,
+          'X-KasGate-Delivery-Id': payload.deliveryId, // Bug #14: For replay protection
         },
         body: JSON.stringify(payload),
         signal: controller.signal,

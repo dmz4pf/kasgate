@@ -49,8 +49,8 @@ export function initDatabase(): Database.Database {
   // Create tables
   db.exec(SCHEMA);
 
-  // Run migrations
-  db.exec(MIGRATIONS);
+  // Run migrations (idempotent - ignore errors for already-applied changes)
+  runMigrations(db);
 
   console.log('[KasGate] Database initialized');
 
@@ -75,6 +75,28 @@ export function closeDatabase(): void {
     db.close();
     db = null;
     console.log('[KasGate] Database closed');
+  }
+}
+
+/**
+ * Run migrations idempotently (ignore already-applied changes)
+ */
+function runMigrations(database: Database.Database): void {
+  const migrations = MIGRATIONS.split(';').filter((m) => m.trim().length > 0);
+
+  for (const migration of migrations) {
+    const sql = migration.trim();
+    if (!sql || sql.startsWith('--')) continue;
+
+    try {
+      database.exec(sql);
+    } catch (error) {
+      // Ignore "duplicate column" errors (SQLite error code: SQLITE_ERROR)
+      const errorMsg = (error as Error).message;
+      if (!errorMsg.includes('duplicate column')) {
+        console.warn(`[KasGate] Migration warning: ${errorMsg}`);
+      }
+    }
   }
 }
 

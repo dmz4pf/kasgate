@@ -19,6 +19,9 @@ import { NETWORK_CONFIG } from '../config/network.js';
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || 'localhost';
 
+// Store interval handles for cleanup (Bug #6 fix)
+let expirationInterval: NodeJS.Timeout | null = null;
+
 /**
  * Initialize all services
  */
@@ -54,23 +57,34 @@ async function initializeServices(): Promise<void> {
 }
 
 /**
- * Start the session expiration worker
+ * Start the session expiration worker (Bug #6 fix: store handle for cleanup)
  */
 function startExpirationWorker(): void {
+  // Clear existing interval if any
+  if (expirationInterval) {
+    clearInterval(expirationInterval);
+  }
+
   // Check for expired sessions every minute
-  setInterval(() => {
+  expirationInterval = setInterval(() => {
     const sessionManager = getSessionManager();
     sessionManager.expireOldSessions();
   }, 60000);
 }
 
 /**
- * Graceful shutdown handler
+ * Graceful shutdown handler (Bug #6 fix: clear intervals)
  */
 async function shutdown(signal: string): Promise<void> {
   console.log(`[KasGate] Received ${signal}, shutting down gracefully...`);
 
   try {
+    // Clear expiration interval (Bug #6 fix)
+    if (expirationInterval) {
+      clearInterval(expirationInterval);
+      expirationInterval = null;
+    }
+
     // Stop confirmation tracker
     const confirmationTracker = getConfirmationTracker();
     confirmationTracker.stop();
