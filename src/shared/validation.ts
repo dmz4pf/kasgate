@@ -7,20 +7,15 @@ import { NETWORK_CONFIG } from '../config/network.js';
 import { SOMPI_PER_KAS, MIN_AMOUNT_SOMPI } from './constants.js';
 
 // Bug #19: XPub validation helper - cached module to prevent memory leaks
-let kaspaWasmModule: any = null;
+import * as kaspaWasm from '@dfns/kaspa-wasm';
 
 /**
  * Bug #19: Validate XPub using kaspa-wasm library
  * Returns true if valid, false if invalid
- * Note: Module is cached to prevent memory leaks from repeated require()
  */
 export function validateXPubWithWasm(xpub: string): boolean {
   try {
-    // Cache the WASM module to prevent memory leaks
-    if (!kaspaWasmModule) {
-      kaspaWasmModule = require('@dfns/kaspa-wasm');
-    }
-    const xpubInstance = new kaspaWasmModule.XPub(xpub);
+    const xpubInstance = new kaspaWasm.XPub(xpub);
     // Free the instance to avoid memory leaks
     if (typeof xpubInstance.free === 'function') {
       xpubInstance.free();

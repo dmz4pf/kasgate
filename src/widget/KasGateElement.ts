@@ -10,6 +10,7 @@ import { BASE_STYLES } from './styles/base.js';
 import { ApiClient, SessionResponse } from './utils/api.js';
 import { SocketClient } from './utils/socket.js';
 import { formatTimeRemaining, formatKasAmount, copyToClipboard, icons } from './utils/formatters.js';
+import { isKaswareInstalled, sendWithKasware } from './integrations/kasware.js';
 
 // ============================================================
 // TYPES
@@ -386,6 +387,8 @@ export class KasGateElement extends HTMLElement {
     if (!this.session) return '';
 
     const remaining = new Date(this.session.expiresAt).getTime() - Date.now();
+    const isTestnet = this.session.address.startsWith('kaspatest:');
+    const hasKasware = isKaswareInstalled();
 
     return `
       <div class="kg-container">
@@ -397,9 +400,22 @@ export class KasGateElement extends HTMLElement {
         <div class="kg-body">
           <div class="kg-error-message kg-hidden"></div>
 
-          <div class="kg-qr-container">
-            <img class="kg-qr-code" src="${this.session.qrCode}" alt="Payment QR Code" />
-          </div>
+          ${hasKasware ? `
+            <div class="kg-payment-method">
+              <button class="kg-kasware-button">
+                ${icons.wallet} Pay with Kasware
+              </button>
+              <div class="kg-divider">
+                <span>or pay manually</span>
+              </div>
+            </div>
+          ` : ''}
+
+          ${!isTestnet ? `
+            <div class="kg-qr-container">
+              <img class="kg-qr-code" src="${this.session.qrCode}" alt="Payment QR Code" />
+            </div>
+          ` : ''}
 
           <div class="kg-address-container">
             <div class="kg-address-label">Send exactly ${formatKasAmount(this.session.amount)} KAS to:</div>
@@ -409,6 +425,12 @@ export class KasGateElement extends HTMLElement {
           <button class="kg-copy-button">
             ${icons.copy} <span>Copy Address</span>
           </button>
+
+          ${isTestnet ? `
+            <div class="kg-testnet-notice">
+              <span>Testnet Mode</span> - Use Kaspa-NG or Kasware to send
+            </div>
+          ` : ''}
 
           <div class="kg-timer" style="margin-top: 16px;">
             ${icons.clock}
@@ -565,12 +587,46 @@ export class KasGateElement extends HTMLElement {
     const copyButton = this.shadow.querySelector('.kg-copy-button');
     copyButton?.addEventListener('click', () => this.handleCopyAddress());
 
+    // Kasware button
+    const kaswareButton = this.shadow.querySelector('.kg-kasware-button');
+    kaswareButton?.addEventListener('click', () => this.handleKaswarePayment());
+
     // Retry button
     const retryButton = this.shadow.querySelector('.kg-retry-button');
     retryButton?.addEventListener('click', () => {
       this.reset();
       this.start();
     });
+  }
+
+  private async handleKaswarePayment(): Promise<void> {
+    if (!this.session) return;
+
+    const button = this.shadow.querySelector('.kg-kasware-button') as HTMLButtonElement;
+    if (!button) return;
+
+    // Disable button during transaction
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `${icons.spinner} Connecting...`;
+
+    try {
+      const amountSompi = BigInt(this.session.amount);
+      const txId = await sendWithKasware(this.session.address, amountSompi);
+
+      if (txId) {
+        button.innerHTML = `${icons.check} Transaction Sent!`;
+        // The WebSocket will pick up the payment and update the UI
+      } else {
+        button.disabled = false;
+        button.innerHTML = originalText;
+      }
+    } catch (error) {
+      console.error('[KasGate Widget] Kasware payment failed:', error);
+      button.disabled = false;
+      button.innerHTML = originalText;
+      this.showError((error as Error).message || 'Payment failed');
+    }
   }
 }
 

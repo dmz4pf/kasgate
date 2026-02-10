@@ -316,4 +316,76 @@ export const BASE_STYLES = `
   .kg-tab-panel.active {
     display: block;
   }
+
+  /* Payment Methods */
+  .kg-payment-method {
+    margin-bottom: var(--kg-spacing-md);
+  }
+
+  .kg-kasware-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--kg-spacing-sm);
+    width: 100%;
+    padding: var(--kg-spacing-md);
+    background: linear-gradient(135deg, #49EACB 0%, #36b89f 100%);
+    border: none;
+    border-radius: var(--kg-radius);
+    color: #0A0F14;
+    font-size: var(--kg-font-size-base);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .kg-kasware-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(73, 234, 203, 0.3);
+  }
+
+  .kg-kasware-button:active {
+    transform: translateY(0);
+  }
+
+  .kg-kasware-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .kg-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--kg-spacing-md);
+    margin: var(--kg-spacing-md) 0;
+    color: var(--kg-text-secondary);
+    font-size: var(--kg-font-size-sm);
+  }
+
+  .kg-divider::before,
+  .kg-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--kg-border);
+  }
+
+  .kg-testnet-notice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--kg-spacing-sm);
+    padding: var(--kg-spacing-sm) var(--kg-spacing-md);
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: var(--kg-radius);
+    color: #eab308;
+    font-size: var(--kg-font-size-sm);
+    margin-top: var(--kg-spacing-md);
+  }
+
+  .kg-testnet-notice span {
+    font-weight: 600;
+  }
 `;

@@ -46,7 +46,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Rebuild better-sqlite3 for Alpine
 RUN npm rebuild better-sqlite3

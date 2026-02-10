@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS merchants (
   email TEXT UNIQUE,
   xpub TEXT NOT NULL,
   api_key TEXT UNIQUE NOT NULL,
+  api_key_hash TEXT,  -- Bug #3: Timing-safe API key verification
   webhook_url TEXT,
   webhook_secret TEXT,
   next_address_index INTEGER DEFAULT 0,
@@ -25,6 +26,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   address_index INTEGER NOT NULL,
   amount TEXT NOT NULL,  -- sompi as string (bigint)
   status TEXT DEFAULT 'pending',
+  subscription_token TEXT,  -- Bug #5: WebSocket authentication
   tx_id TEXT,
   confirmations INTEGER DEFAULT 0,
   order_id TEXT,
@@ -57,7 +59,7 @@ CREATE TABLE IF NOT EXISTS webhooks (
 -- Webhook delivery logs
 CREATE TABLE IF NOT EXISTS webhook_logs (
   id TEXT PRIMARY KEY,
-  webhook_id TEXT NOT NULL REFERENCES webhooks(id),
+  webhook_id TEXT REFERENCES webhooks(id),  -- Nullable for direct merchant webhooks
   session_id TEXT NOT NULL REFERENCES sessions(id),
   event TEXT NOT NULL,
   payload TEXT NOT NULL,  -- JSON string

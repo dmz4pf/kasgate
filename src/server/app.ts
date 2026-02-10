@@ -8,7 +8,13 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 import { notFoundHandler, errorHandler } from './middleware/error.js';
+
+// Resolve paths - use PROJECT_ROOT env var or fall back to cwd()
+// In production, start the server from project root: node dist/server/index.js
+const PROJECT_ROOT = process.env.PROJECT_ROOT || process.cwd();
+const DIST_DIR = path.join(PROJECT_ROOT, 'dist');
 
 // Import routes
 import healthRoutes from './routes/health.js';
@@ -147,14 +153,14 @@ export function createApp(): express.Application {
   // ============================================================
 
   // Serve widget bundle - allow embedding from any origin
-  app.use('/widget', cors(widgetCorsOptions), express.static('dist'));
+  app.use('/widget', cors(widgetCorsOptions), express.static(DIST_DIR));
 
   // Serve dashboard (if exists) - allow embedding from any origin
-  app.use('/dashboard', cors(widgetCorsOptions), express.static('dist/dashboard'));
+  app.use('/dashboard', cors(widgetCorsOptions), express.static(path.join(DIST_DIR, 'dashboard')));
 
   // SPA fallback for dashboard client-side routing
   app.get('/dashboard/*', cors(widgetCorsOptions), (_req, res) => {
-    res.sendFile('index.html', { root: 'dist/dashboard' });
+    res.sendFile(path.join(DIST_DIR, 'dashboard', 'index.html'));
   });
 
   // ============================================================

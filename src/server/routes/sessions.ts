@@ -26,7 +26,7 @@ const router = Router();
  * Bug #27: Sanitize string to remove ALL HTML tags and dangerous content
  * Strip all HTML rather than blocklist approach to prevent XSS bypasses
  */
-function sanitizeString(str: string): string {
+export function sanitizeString(str: string): string {
   // Remove ALL HTML tags - safer than trying to blocklist specific tags
   let sanitized = str.replace(/<[^>]*>/g, '');
   // Remove javascript: and data: protocols

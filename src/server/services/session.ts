@@ -385,6 +385,137 @@ export class SessionManager {
   }
 
   /**
+   * Get analytics data with SQL-level aggregation for better performance
+   */
+  getAnalyticsAggregated(
+    merchantId: string,
+    startDate: Date,
+    endDate: Date
+  ): {
+    totalSessions: number;
+    confirmedSessions: number;
+    totalVolumeSompi: string;
+    statusDistribution: Record<string, number>;
+    dailyBreakdown: Array<{
+      date: string;
+      sessions: number;
+      confirmed: number;
+      expired: number;
+      volumeSompi: string;
+    }>;
+  } {
+    const startIso = startDate.toISOString();
+    const endIso = endDate.toISOString();
+
+    // Total sessions and confirmed count in one query
+    const summary = queryOne<{
+      total: number;
+      confirmed: number;
+      volume: string;
+    }>(
+      `SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed,
+        COALESCE(SUM(CASE WHEN status = 'confirmed' THEN CAST(amount AS INTEGER) ELSE 0 END), 0) as volume
+       FROM sessions
+       WHERE merchant_id = ? AND created_at >= ? AND created_at <= ?`,
+      [merchantId, startIso, endIso]
+    );
+
+    // Status distribution
+    const statusRows = query<{ status: string; count: number }>(
+      `SELECT status, COUNT(*) as count
+       FROM sessions
+       WHERE merchant_id = ? AND created_at >= ? AND created_at <= ?
+       GROUP BY status`,
+      [merchantId, startIso, endIso]
+    );
+
+    const statusDistribution: Record<string, number> = {
+      pending: 0,
+      confirming: 0,
+      confirmed: 0,
+      expired: 0,
+      failed: 0,
+    };
+    statusRows.forEach(row => {
+      statusDistribution[row.status] = row.count;
+    });
+
+    // Daily breakdown with SQL aggregation
+    const dailyRows = query<{
+      date: string;
+      sessions: number;
+      confirmed: number;
+      expired: number;
+      volume: string;
+    }>(
+      `SELECT
+        DATE(created_at) as date,
+        COUNT(*) as sessions,
+        SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed,
+        SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired,
+        COALESCE(SUM(CASE WHEN status = 'confirmed' THEN CAST(amount AS INTEGER) ELSE 0 END), 0) as volume
+       FROM sessions
+       WHERE merchant_id = ? AND created_at >= ? AND created_at <= ?
+       GROUP BY DATE(created_at)
+       ORDER BY date ASC`,
+      [merchantId, startIso, endIso]
+    );
+
+    return {
+      totalSessions: summary?.total || 0,
+      confirmedSessions: summary?.confirmed || 0,
+      totalVolumeSompi: summary?.volume || '0',
+      statusDistribution,
+      dailyBreakdown: dailyRows.map(row => ({
+        date: row.date,
+        sessions: row.sessions,
+        confirmed: row.confirmed,
+        expired: row.expired,
+        volumeSompi: row.volume,
+      })),
+    };
+  }
+
+  /**
+   * Get top payments with SQL-level sorting and limiting
+   */
+  getTopPayments(
+    merchantId: string,
+    startDate: Date,
+    endDate: Date,
+    limit: number = 10
+  ): Array<{
+    id: string;
+    amountSompi: string;
+    orderId: string | null;
+    confirmedAt: string | null;
+  }> {
+    const rows = query<{
+      id: string;
+      amount: string;
+      order_id: string | null;
+      confirmed_at: string | null;
+    }>(
+      `SELECT id, amount, order_id, confirmed_at
+       FROM sessions
+       WHERE merchant_id = ? AND status = 'confirmed'
+         AND created_at >= ? AND created_at <= ?
+       ORDER BY CAST(amount AS INTEGER) DESC
+       LIMIT ?`,
+      [merchantId, startDate.toISOString(), endDate.toISOString(), limit]
+    );
+
+    return rows.map(row => ({
+      id: row.id,
+      amountSompi: row.amount,
+      orderId: row.order_id,
+      confirmedAt: row.confirmed_at,
+    }));
+  }
+
+  /**
    * Verify a subscription token for WebSocket authentication (Bug #5 fix)
    */
   verifySubscriptionToken(sessionId: string, token: string): boolean {

@@ -29,19 +29,26 @@ function getDbPath(): string {
 
 /**
  * Initialize the database connection
+ * @param customPath Optional path override (use ':memory:' for in-memory testing)
  */
-export function initDatabase(): Database.Database {
+export function initDatabase(customPath?: string): Database.Database {
   if (db) {
     return db;
   }
 
-  const dbPath = getDbPath();
-  console.log(`[KasGate] Initializing database at ${dbPath}`);
+  const dbPath = customPath || getDbPath();
+  const isMemory = dbPath === ':memory:';
+
+  if (!isMemory) {
+    console.log(`[KasGate] Initializing database at ${dbPath}`);
+  }
 
   db = new Database(dbPath);
 
-  // Enable WAL mode for better concurrency
-  db.pragma('journal_mode = WAL');
+  // Enable WAL mode for better concurrency (not for in-memory)
+  if (!isMemory) {
+    db.pragma('journal_mode = WAL');
+  }
 
   // Enable foreign keys
   db.pragma('foreign_keys = ON');
@@ -52,7 +59,9 @@ export function initDatabase(): Database.Database {
   // Run migrations (idempotent - ignore errors for already-applied changes)
   runMigrations(db);
 
-  console.log('[KasGate] Database initialized');
+  if (!isMemory) {
+    console.log('[KasGate] Database initialized');
+  }
 
   return db;
 }

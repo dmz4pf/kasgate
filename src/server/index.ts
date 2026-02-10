@@ -16,7 +16,7 @@ import { getWebSocketManager } from './websocket/index.js';
 import { getSessionManager } from './services/session.js';
 import { NETWORK_CONFIG } from '../config/network.js';
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || 'localhost';
 
 // Store interval handles for cleanup (Bug #6 fix)

@@ -16,14 +16,18 @@ export function formatTimeRemaining(ms: number): string {
 }
 
 /**
- * Format KAS amount for display
+ * Format KAS amount for display (converts sompi to KAS)
+ * 1 KAS = 100,000,000 sompi (10^8)
  */
-export function formatKasAmount(amount: string): string {
-  const num = parseFloat(amount);
-  if (isNaN(num)) return amount;
+export function formatKasAmount(sompi: string): string {
+  const num = parseFloat(sompi);
+  if (isNaN(num)) return sompi;
 
-  // Remove trailing zeros after decimal
-  return num.toFixed(8).replace(/\.?0+$/, '');
+  // Convert sompi to KAS
+  const kas = num / 100_000_000;
+
+  // Format with appropriate decimal places, remove trailing zeros
+  return kas.toFixed(8).replace(/\.?0+$/, '');
 }
 
 /**
