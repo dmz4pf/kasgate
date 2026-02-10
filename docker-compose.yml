@@ -1,0 +1,55 @@
+# =============================================================================
+# KasGate Docker Compose Configuration
+# =============================================================================
+# Usage:
+#   Development:  docker-compose up
+#   Production:   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # KasGate Application
+  # ---------------------------------------------------------------------------
+  kasgate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kasgate
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - KASPA_NETWORK=${KASPA_NETWORK:-mainnet}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+    volumes:
+      # Persist database
+      - kasgate-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# -----------------------------------------------------------------------------
+# Volumes
+# -----------------------------------------------------------------------------
+volumes:
+  kasgate-data:
+    driver: local
+
+# -----------------------------------------------------------------------------
+# Networks (optional, for multi-service deployments)
+# -----------------------------------------------------------------------------
+networks:
+  default:
+    name: kasgate-network

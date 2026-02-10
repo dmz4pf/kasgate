@@ -1,0 +1,857 @@
+openapi: 3.0.3
+info:
+  title: KasGate Payment API
+  description: |
+    KasGate is a universal Kaspa payment gateway that enables merchants to accept KAS payments on any website.
+
+    ## Authentication
+
+    All merchant endpoints (except registration) require API key authentication.
+    Include your API key in the `X-API-Key` header:
+
+    ```
+    X-API-Key: your_api_key_here
+    ```
+
+    API keys are generated on merchant registration and can be regenerated via the dashboard.
+
+    ## Webhooks
+
+    Payment status updates are sent to your configured webhook URL. Webhooks are signed with HMAC-SHA256.
+
+    **Headers sent with webhooks:**
+    - `X-KasGate-Signature`: HMAC-SHA256 signature of the payload
+    - `X-KasGate-Event`: Event type (e.g., `payment.confirmed`)
+    - `X-KasGate-Timestamp`: ISO 8601 timestamp
+    - `X-KasGate-Delivery-Id`: Unique delivery ID for idempotency
+
+    **Verify webhooks:**
+    ```javascript
+    const crypto = require('crypto');
+    const signature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(JSON.stringify(payload))
+      .digest('hex');
+    const isValid = signature === receivedSignature;
+    ```
+
+    ## WebSocket
+
+    Real-time payment status updates via WebSocket at `/ws`. Subscribe with the session's `subscriptionToken`.
+
+  version: 1.0.0
+  contact:
+    name: KasGate Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3001/api/v1
+    description: Development server
+  - url: https://your-domain.com/api/v1
+    description: Production server
+
+tags:
+  - name: Merchants
+    description: Merchant registration and management
+  - name: Sessions
+    description: Payment session management
+
+paths:
+  /merchants:
+    post:
+      tags:
+        - Merchants
+      summary: Register a new merchant
+      description: |
+        Create a new merchant account. Returns API key and webhook secret (shown only once).
+
+        **Rate Limit:** 10 requests per hour per IP
+      operationId: createMerchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMerchantRequest'
+            example:
+              name: "My Online Store"
+              email: "merchant@example.com"
+              xpub: "xpub6CUGRUonZSQ4TWtTMmzXdrXDtyPWKiKbKTnrPTHM6GHdYhLqZbE64SDbsJkJAYNXPFy..."
+              webhookUrl: "https://mystore.com/webhooks/kasgate"
+      responses:
+        '201':
+          description: Merchant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantCreatedResponse'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                name: "My Online Store"
+                email: "merchant@example.com"
+                apiKey: "kg_live_abc123xyz..."
+                webhookUrl: "https://mystore.com/webhooks/kasgate"
+                webhookSecret: "whsec_abc123..."
+                createdAt: "2024-01-15T10:30:00.000Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "A merchant with this email already exists"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /merchants/me:
+    get:
+      tags:
+        - Merchants
+      summary: Get current merchant profile
+      description: Retrieve details of the authenticated merchant
+      operationId: getMerchant
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Merchant profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantProfile'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                name: "My Online Store"
+                email: "merchant@example.com"
+                webhookUrl: "https://mystore.com/webhooks/kasgate"
+                nextAddressIndex: 42
+                createdAt: "2024-01-15T10:30:00.000Z"
+                updatedAt: "2024-01-20T15:45:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      tags:
+        - Merchants
+      summary: Update merchant profile
+      description: Update the authenticated merchant's profile
+      operationId: updateMerchant
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMerchantRequest'
+            example:
+              name: "My Updated Store Name"
+              webhookUrl: "https://newdomain.com/webhooks"
+      responses:
+        '200':
+          description: Merchant updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantUpdatedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /merchants/me/regenerate-api-key:
+    post:
+      tags:
+        - Merchants
+      summary: Regenerate API key
+      description: |
+        Generate a new API key. The old key is immediately invalidated.
+
+        **Warning:** Update all integrations with the new key immediately.
+      operationId: regenerateApiKey
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: New API key generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apiKey:
+                    type: string
+                    description: New API key (shown only once)
+                  message:
+                    type: string
+              example:
+                apiKey: "kg_live_newkey123..."
+                message: "API key regenerated. Update your integrations with the new key."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /merchants/me/regenerate-webhook-secret:
+    post:
+      tags:
+        - Merchants
+      summary: Regenerate webhook secret
+      description: |
+        Generate a new webhook secret. Update your webhook verification code.
+      operationId: regenerateWebhookSecret
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: New webhook secret generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhookSecret:
+                    type: string
+                    description: New webhook secret (shown only once)
+                  message:
+                    type: string
+              example:
+                webhookSecret: "whsec_newsecret123..."
+                message: "Webhook secret regenerated. Update your webhook verification."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /merchants/me/sessions:
+    get:
+      tags:
+        - Merchants
+      summary: List payment sessions
+      description: Get paginated list of payment sessions for the merchant
+      operationId: listSessions
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of sessions to return
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of sessions to skip
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: status
+          in: query
+          description: Filter by session status
+          schema:
+            $ref: '#/components/schemas/SessionStatus'
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /merchants/me/stats:
+    get:
+      tags:
+        - Merchants
+      summary: Get merchant statistics
+      description: Get payment statistics and totals for the merchant
+      operationId: getMerchantStats
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Merchant statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStats'
+              example:
+                totalSessions: 150
+                pendingSessions: 5
+                confirmingSessions: 2
+                confirmedSessions: 130
+                expiredSessions: 13
+                totalReceived: "1234.56789012"
+                totalReceivedSompi: "123456789012"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /sessions:
+    post:
+      tags:
+        - Sessions
+      summary: Create payment session
+      description: |
+        Create a new payment session. Returns a unique Kaspa address for the customer to pay.
+
+        **Rate Limit:** 100 requests per minute per IP
+      operationId: createSession
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+            example:
+              amount: "10.5"
+              orderId: "ORDER-12345"
+              metadata:
+                customer_email: "customer@example.com"
+                product: "Premium Plan"
+              redirectUrl: "https://mystore.com/order/12345/success"
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionCreatedResponse'
+              example:
+                id: "660e8400-e29b-41d4-a716-446655440001"
+                address: "kaspa:qr0efmrq0uu9n6azqrjw9m8wnsfhd2s3mfvq5sjc..."
+                amount: "10.5"
+                amountSompi: "1050000000000"
+                status: "pending"
+                orderId: "ORDER-12345"
+                qrCode: "data:image/png;base64,iVBORw0KGgo..."
+                subscriptionToken: "sub_abc123..."
+                expiresAt: "2024-01-15T11:00:00.000Z"
+                explorerUrl: "https://explorer.kaspa.org/addresses/kaspa:qr0efm..."
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /sessions/{sessionId}:
+    get:
+      tags:
+        - Sessions
+      summary: Get session details
+      description: Get full details of a payment session including QR code
+      operationId: getSession
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Session UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /sessions/{sessionId}/status:
+    get:
+      tags:
+        - Sessions
+      summary: Get session status (lightweight)
+      description: Get minimal status information for polling
+      operationId: getSessionStatus
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionStatusResponse'
+              example:
+                id: "660e8400-e29b-41d4-a716-446655440001"
+                status: "confirming"
+                confirmations: 5
+                requiredConfirmations: 10
+                txId: "abc123def456..."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /sessions/{sessionId}/cancel:
+    post:
+      tags:
+        - Sessions
+      summary: Cancel payment session
+      description: Cancel a pending payment session. Only pending sessions can be cancelled.
+      operationId: cancelSession
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [expired]
+                  message:
+                    type: string
+              example:
+                id: "660e8400-e29b-41d4-a716-446655440001"
+                status: "expired"
+                message: "Session cancelled"
+        '400':
+          description: Session cannot be cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Only pending sessions can be cancelled"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not authorized to cancel this session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key provided on merchant registration
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    SessionStatus:
+      type: string
+      enum:
+        - pending
+        - confirming
+        - confirmed
+        - expired
+        - failed
+      description: |
+        - `pending`: Waiting for payment
+        - `confirming`: Payment received, waiting for confirmations
+        - `confirmed`: Payment confirmed (10 confirmations)
+        - `expired`: Session expired without payment
+        - `failed`: Payment failed
+
+    CreateMerchantRequest:
+      type: object
+      required:
+        - name
+        - xpub
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Merchant display name
+        email:
+          type: string
+          format: email
+          description: Merchant email (optional, must be unique)
+        xpub:
+          type: string
+          pattern: '^(xpub|kpub)[a-zA-Z0-9]{90,130}$'
+          description: Extended public key for HD wallet address derivation
+        webhookUrl:
+          type: string
+          format: uri
+          description: URL to receive payment status webhooks
+
+    MerchantCreatedResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        apiKey:
+          type: string
+          description: API key (shown only once - store securely!)
+        webhookUrl:
+          type: string
+        webhookSecret:
+          type: string
+          description: Webhook signing secret (shown only once)
+        createdAt:
+          type: string
+          format: date-time
+
+    MerchantProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        webhookUrl:
+          type: string
+        nextAddressIndex:
+          type: integer
+          description: Next HD wallet derivation index
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateMerchantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        xpub:
+          type: string
+          pattern: '^(xpub|kpub)[a-zA-Z0-9]{90,130}$'
+        webhookUrl:
+          type: string
+          format: uri
+
+    MerchantUpdatedResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        webhookUrl:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    MerchantStats:
+      type: object
+      properties:
+        totalSessions:
+          type: integer
+        pendingSessions:
+          type: integer
+        confirmingSessions:
+          type: integer
+        confirmedSessions:
+          type: integer
+        expiredSessions:
+          type: integer
+        totalReceived:
+          type: string
+          description: Total KAS received (as decimal string)
+        totalReceivedSompi:
+          type: string
+          description: Total received in sompi (as string for bigint)
+
+    CreateSessionRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: string
+          pattern: '^\d+(\.\d{1,8})?$'
+          description: Amount in KAS (up to 8 decimal places)
+        orderId:
+          type: string
+          maxLength: 100
+          description: Your order reference ID
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom key-value data (max 20 keys, 1KB total)
+        redirectUrl:
+          type: string
+          format: uri
+          description: URL to redirect after payment
+
+    SessionCreatedResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        address:
+          type: string
+          description: Kaspa address for payment
+        amount:
+          type: string
+          description: Amount in KAS
+        amountSompi:
+          type: string
+          description: Amount in sompi (smallest unit)
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        orderId:
+          type: string
+        qrCode:
+          type: string
+          description: Base64-encoded QR code image
+        subscriptionToken:
+          type: string
+          description: Token for WebSocket subscription
+        expiresAt:
+          type: string
+          format: date-time
+        explorerUrl:
+          type: string
+          format: uri
+          description: Link to block explorer
+
+    SessionDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        address:
+          type: string
+        amount:
+          type: string
+        amountSompi:
+          type: string
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        confirmations:
+          type: integer
+          description: Current confirmation count
+        requiredConfirmations:
+          type: integer
+          description: Confirmations needed (10)
+        txId:
+          type: string
+          description: Transaction ID (when paid)
+        orderId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        qrCode:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+          description: When payment was first detected
+        confirmedAt:
+          type: string
+          format: date-time
+          description: When payment reached 10 confirmations
+        explorerUrl:
+          type: string
+          format: uri
+
+    SessionStatusResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        confirmations:
+          type: integer
+        requiredConfirmations:
+          type: integer
+        txId:
+          type: string
+
+    SessionListResponse:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionSummary'
+        total:
+          type: integer
+          description: Total sessions matching filters
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    SessionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        address:
+          type: string
+        amount:
+          type: string
+        amountSompi:
+          type: string
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        confirmations:
+          type: integer
+        txId:
+          type: string
+        orderId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+
+    WebhookPayload:
+      type: object
+      description: Payload sent to webhook URL
+      properties:
+        event:
+          type: string
+          enum:
+            - payment.pending
+            - payment.confirming
+            - payment.confirmed
+            - payment.expired
+            - payment.failed
+        sessionId:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        amount:
+          type: string
+          description: Amount in sompi
+        address:
+          type: string
+        txId:
+          type: string
+        confirmations:
+          type: integer
+        orderId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+        deliveryId:
+          type: string
+          format: uuid
+          description: Unique ID for idempotency
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invalid amount format"
+
+    Unauthorized:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invalid API key"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Session not found"
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Too many requests, please try again later"

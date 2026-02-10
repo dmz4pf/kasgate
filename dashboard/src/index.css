@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* Kaspa brand theme */
+:root {
+  --color-primary: #49EACB;
+  --color-primary-hover: #3dd4b7;
+  --color-background: #0A0F14;
+  --color-surface: #151C28;
+  --color-surface-hover: #1c2535;
+  --color-border: #2a3444;
+  --color-text: #e5e7eb;
+  --color-text-muted: #9ca3af;
+
+  /* Status colors */
+  --color-pending: #eab308;
+  --color-confirming: #3b82f6;
+  --color-confirmed: #22c55e;
+  --color-expired: #6b7280;
+  --color-failed: #ef4444;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

@@ -152,6 +152,11 @@ export function createApp(): express.Application {
   // Serve dashboard (if exists) - allow embedding from any origin
   app.use('/dashboard', cors(widgetCorsOptions), express.static('dist/dashboard'));
 
+  // SPA fallback for dashboard client-side routing
+  app.get('/dashboard/*', cors(widgetCorsOptions), (_req, res) => {
+    res.sendFile('index.html', { root: 'dist/dashboard' });
+  });
+
   // ============================================================
   // API ROUTES (Bug #16: Restricted CORS)
   // ============================================================

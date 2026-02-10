@@ -33,6 +33,7 @@ interface WebhookLogRow {
   session_id: string;
   event: string;
   payload: string;
+  delivery_id: string | null;  // Bug #14: Unique ID for replay protection
   status_code: number | null;
   response: string | null;
   attempts: number;
@@ -95,11 +96,12 @@ export class WebhookService {
     const signature = this.signPayload(payload, merchant.webhook_secret || '');
 
     // Create log entry (Bug #14: store delivery_id for idempotency tracking)
+    // webhook_id is null for direct merchant webhooks (vs registered webhooks)
     const logId = uuidv4();
     execute(
       `INSERT INTO webhook_logs (id, webhook_id, session_id, event, payload, delivery_id, attempts, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-      [logId, '', session.id, event, toJson(payload), deliveryId, 0]
+      [logId, null, session.id, event, toJson(payload), deliveryId, 0]
     );
 
     // Attempt delivery
@@ -162,6 +164,72 @@ export class WebhookService {
       'SELECT * FROM webhook_logs WHERE session_id = ? ORDER BY created_at DESC',
       [sessionId]
     );
+  }
+
+  /**
+   * Get webhook delivery logs for a merchant (across all sessions)
+   */
+  getLogsForMerchant(
+    merchantId: string,
+    options: { limit?: number; offset?: number; event?: string } = {}
+  ): { logs: WebhookLogRow[]; total: number } {
+    const { limit = 20, offset = 0, event } = options;
+
+    // Build query with optional event filter
+    let baseQuery = `
+      FROM webhook_logs wl
+      INNER JOIN sessions s ON wl.session_id = s.id
+      WHERE s.merchant_id = ?
+    `;
+    const params: (string | number)[] = [merchantId];
+
+    if (event) {
+      baseQuery += ' AND wl.event = ?';
+      params.push(event);
+    }
+
+    // Get total count
+    const countResult = queryOne<{ count: number }>(
+      `SELECT COUNT(*) as count ${baseQuery}`,
+      params
+    );
+    const total = countResult?.count ?? 0;
+
+    // Get paginated logs
+    const logs = query<WebhookLogRow>(
+      `SELECT wl.* ${baseQuery} ORDER BY wl.created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    return { logs, total };
+  }
+
+  /**
+   * Retry a specific webhook delivery
+   */
+  async retryWebhook(logId: string, merchantId: string): Promise<boolean> {
+    // Verify the log belongs to the merchant
+    const log = queryOne<WebhookLogRow & { merchant_id: string }>(
+      `SELECT wl.*, s.merchant_id
+       FROM webhook_logs wl
+       INNER JOIN sessions s ON wl.session_id = s.id
+       WHERE wl.id = ? AND s.merchant_id = ?`,
+      [logId, merchantId]
+    );
+
+    if (!log) {
+      return false;
+    }
+
+    // Reset for retry
+    execute(
+      `UPDATE webhook_logs
+       SET next_retry_at = datetime('now'), attempts = attempts - 1
+       WHERE id = ?`,
+      [logId]
+    );
+
+    return true;
   }
 
   // ============================================================

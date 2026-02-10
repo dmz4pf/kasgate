@@ -1,0 +1,62 @@
+{
+  "name": "@kasgate/widget",
+  "version": "1.0.0",
+  "description": "Embeddable Kaspa payment widget - Accept KAS payments on any website",
+  "main": "dist/kasgate.cjs.js",
+  "module": "dist/kasgate.esm.js",
+  "browser": "dist/kasgate.umd.js",
+  "unpkg": "dist/kasgate.umd.min.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/kasgate.esm.js",
+      "require": "./dist/kasgate.cjs.js",
+      "browser": "./dist/kasgate.umd.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "build:watch": "rollup -c -w",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "kaspa",
+    "payment",
+    "widget",
+    "web-component",
+    "cryptocurrency",
+    "kas",
+    "blockchain"
+  ],
+  "author": "KasGate Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/kasgate.git",
+    "directory": "packages/widget"
+  },
+  "homepage": "https://github.com/your-org/kasgate#readme",
+  "bugs": {
+    "url": "https://github.com/your-org/kasgate/issues"
+  },
+  "peerDependencies": {},
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-terser": "^0.4.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "rollup": "^4.0.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

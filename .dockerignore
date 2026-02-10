@@ -1,0 +1,47 @@
+# Dependencies
+node_modules
+dashboard/node_modules
+
+# Build output (will be built in container)
+dist
+
+# Development files
+.env
+.env.local
+*.log
+*.db
+
+# Data directory
+data/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# Documentation (not needed in image)
+docs/
+*.md
+!README.md
+
+# Tests
+*.test.ts
+*.spec.ts
+coverage/
+.nyc_output/
+
+# Serena/AI tools
+.serena/
+
+# Screenshots
+*.png
+screenshots/
+
+# Misc
+.DS_Store
+Thumbs.db
