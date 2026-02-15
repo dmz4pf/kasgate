@@ -35,27 +35,36 @@ import express from 'express';
 
 const app = express();
 
-app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/webhook', express.json(), (req, res) => {
   const signature = req.headers['x-kasgate-signature'];
+  const timestamp = req.headers['x-kasgate-timestamp'];
+  const deliveryId = req.headers['x-kasgate-delivery-id'];
   const secret = process.env.WEBHOOK_SECRET;
 
+  // Verify signature (HMAC-SHA256 of JSON body)
   const expected = crypto
     .createHmac('sha256', secret)
-    .update(req.body)
+    .update(JSON.stringify(req.body))
     .digest('hex');
 
   if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
     return res.status(401).send('Invalid signature');
   }
 
-  const event = JSON.parse(req.body);
+  // Check timestamp is within 5 minutes (replay protection)
+  const age = Date.now() - new Date(timestamp).getTime();
+  if (age > 5 * 60 * 1000) {
+    return res.status(401).send('Timestamp too old');
+  }
 
-  switch (event.type) {
+  const { event, sessionId, amount, address, txId } = req.body;
+
+  switch (event) {
     case 'payment.confirmed':
-      console.log('Payment confirmed:', event.session.id);
+      console.log('Payment confirmed:', sessionId, txId);
       break;
     case 'payment.expired':
-      console.log('Payment expired:', event.session.id);
+      console.log('Payment expired:', sessionId);
       break;
   }
 
@@ -86,33 +95,35 @@ print(session['amount'])    # "10.5"
 print(session['expiresAt']) # "2026-02-15T..."`,
     webhook: `import hmac
 import hashlib
+import json
 from flask import Flask, request
 
 app = Flask(__name__)
 WEBHOOK_SECRET = 'your_webhook_secret'
 
-def verify_signature(payload, signature, secret):
-    expected = hmac.new(
-        secret.encode(),
-        payload,
-        hashlib.sha256
-    ).hexdigest()
-    return hmac.compare_digest(signature, expected)
-
 @app.route('/webhook', methods=['POST'])
 def webhook():
     signature = request.headers.get('X-KasGate-Signature')
+    timestamp = request.headers.get('X-KasGate-Timestamp')
 
-    if not verify_signature(request.data, signature, WEBHOOK_SECRET):
+    # Verify HMAC-SHA256 signature of JSON body
+    body = json.dumps(request.json, separators=(',', ':'))
+    expected = hmac.new(
+        WEBHOOK_SECRET.encode(),
+        body.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(signature, expected):
         return 'Invalid signature', 401
 
-    event = request.json
+    data = request.json
 
-    if event['type'] == 'payment.confirmed':
-        print(f"Payment confirmed: {event['session']['id']}")
+    if data['event'] == 'payment.confirmed':
+        print(f"Payment confirmed: {data['sessionId']}, tx: {data['txId']}")
 
-    elif event['type'] == 'payment.expired':
-        print(f"Payment expired: {event['session']['id']}")
+    elif data['event'] == 'payment.expired':
+        print(f"Payment expired: {data['sessionId']}")
 
     return 'OK', 200`,
   },
@@ -131,22 +142,28 @@ curl -X POST https://kasgate-production.up.railway.app/api/v1/sessions \\
 # POST https://yoursite.com/webhook
 # Headers:
 #   X-KasGate-Signature: <hmac-sha256-hex>
+#   X-KasGate-Event: payment.confirmed
+#   X-KasGate-Timestamp: 2026-02-15T10:00:00.000Z
+#   X-KasGate-Delivery-Id: <uuid>
 #   Content-Type: application/json
 
 {
-  "type": "payment.confirmed",
-  "session": {
-    "id": "sess_abc123",
-    "orderId": "order_123",
-    "status": "confirmed",
-    "amount": "10",
-    "address": "kaspa:qr...",
-    "txId": "abc123def456...",
-    "confirmedAt": "2026-02-11T09:55:00Z"
-  }
+  "event": "payment.confirmed",
+  "sessionId": "sess_abc123",
+  "merchantId": "merch_xyz",
+  "amount": "1050000000",
+  "address": "kaspatest:qr...",
+  "txId": "abc123def456...",
+  "confirmations": 10,
+  "orderId": "order_123",
+  "metadata": { "customerId": "cust_456" },
+  "timestamp": "2026-02-15T10:00:00.000Z",
+  "deliveryId": "<uuid>"
 }
 
-# Verify: HMAC-SHA256(raw_body, webhook_secret) == X-KasGate-Signature`,
+# Verify: HMAC-SHA256(JSON.stringify(body), webhook_secret)
+# == X-KasGate-Signature header
+# Also check timestamp is within 5 minutes`,
   },
 };
 
@@ -252,6 +269,11 @@ export function IntegrationPage() {
                 <code className="text-zn-error">payment.expired</code>
                 <span className="text-zn-secondary">— Not paid in time</span>
               </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-zn-error" />
+                <code className="text-zn-error">payment.failed</code>
+                <span className="text-zn-secondary">— Payment error</span>
+              </div>
             </div>
           </div>
         </div>
@@ -329,7 +351,7 @@ export function IntegrationPage() {
               <ApiRow method="POST" endpoint="/api/v1/sessions/:id/cancel" description="Cancel a pending payment" />
               <ApiRow method="GET" endpoint="/api/v1/sessions" description="List all payments" />
               <ApiRow method="GET" endpoint="/api/v1/merchants/me" description="Get merchant profile" />
-              <ApiRow method="PUT" endpoint="/api/v1/merchants/me" description="Update profile" />
+              <ApiRow method="PATCH" endpoint="/api/v1/merchants/me" description="Update profile" />
               <ApiRow method="GET" endpoint="/api/v1/stats" description="Get payment statistics" isLast />
             </tbody>
           </table>
@@ -405,6 +427,7 @@ function ApiRow({ method, endpoint, description, isLast }: {
     GET: 'bg-zn-success/20 text-zn-success',
     POST: 'bg-zn-link/20 text-zn-link',
     PUT: 'bg-zn-warning/20 text-zn-warning',
+    PATCH: 'bg-zn-warning/20 text-zn-warning',
     DELETE: 'bg-zn-error/20 text-zn-error',
   };
 
