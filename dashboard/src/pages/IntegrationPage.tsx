@@ -11,26 +11,25 @@ type Tab = (typeof TABS)[number];
 const CODE_EXAMPLES: Record<Tab, { create: string; webhook: string }> = {
   JavaScript: {
     create: `// 1. Create a payment session
-const response = await fetch('/api/v1/sessions', {
+const response = await fetch('https://kasgate-production.up.railway.app/api/v1/sessions', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'X-API-Key': 'your_api_key'
   },
   body: JSON.stringify({
+    amount: '10.5',
     orderId: 'order_123',
-    amount: '10.00',
-    currency: 'KAS',
-    callbackUrl: 'https://yoursite.com/payment-complete',
-    metadata: { customerId: 'cust_456' }
+    metadata: { customerId: 'cust_456' },
+    redirectUrl: 'https://yoursite.com/payment-complete'
   })
 });
 
 const session = await response.json();
-console.log(session.id);
-console.log(session.address);
-console.log(session.amount);
-console.log(session.expiresAt);`,
+console.log(session.id);        // "sess_abc123"
+console.log(session.address);   // "kaspatest:qr..."
+console.log(session.amount);    // "10.5"
+console.log(session.expiresAt); // "2026-02-15T..."`,
     webhook: `import crypto from 'crypto';
 import express from 'express';
 
@@ -67,25 +66,24 @@ app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
     create: `import requests
 
 response = requests.post(
-    '/api/v1/sessions',
+    'https://kasgate-production.up.railway.app/api/v1/sessions',
     headers={
         'Content-Type': 'application/json',
         'X-API-Key': 'your_api_key'
     },
     json={
+        'amount': '10.5',
         'orderId': 'order_123',
-        'amount': '10.00',
-        'currency': 'KAS',
-        'callbackUrl': 'https://yoursite.com/payment-complete',
-        'metadata': {'customerId': 'cust_456'}
+        'metadata': {'customerId': 'cust_456'},
+        'redirectUrl': 'https://yoursite.com/payment-complete'
     }
 )
 
 session = response.json()
-print(session['id'])
-print(session['address'])
-print(session['amount'])
-print(session['expiresAt'])`,
+print(session['id'])        # "sess_abc123"
+print(session['address'])   # "kaspatest:qr..."
+print(session['amount'])    # "10.5"
+print(session['expiresAt']) # "2026-02-15T..."`,
     webhook: `import hmac
 import hashlib
 from flask import Flask, request
@@ -120,15 +118,14 @@ def webhook():
   },
   cURL: {
     create: `# Create a payment session
-curl -X POST /api/v1/sessions \\
+curl -X POST https://kasgate-production.up.railway.app/api/v1/sessions \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: your_api_key" \\
   -d '{
+    "amount": "10.5",
     "orderId": "order_123",
-    "amount": "10.00",
-    "currency": "KAS",
-    "callbackUrl": "https://yoursite.com/payment-complete",
-    "metadata": { "customerId": "cust_456" }
+    "metadata": { "customerId": "cust_456" },
+    "redirectUrl": "https://yoursite.com/payment-complete"
   }'`,
     webhook: `# Example webhook payload:
 # POST https://yoursite.com/webhook
@@ -277,18 +274,22 @@ export function IntegrationPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             <CodeBlock
               code={`<!-- Add to your checkout page -->
-<div id="kasgate-widget"></div>
+<script src="https://kasgate-production.up.railway.app/widget/kasgate.js"></script>
 
-<script src="/widget.js"></script>
+<kas-gate
+  session-id="sess_abc123"
+  theme="dark"
+></kas-gate>
+
 <script>
-  KasGate.init({
-    sessionId: 'sess_abc123',
-    onSuccess: (session) => {
-      window.location.href = '/order-complete';
-    },
-    onExpired: () => {
-      alert('Payment session expired');
-    }
+  // Listen for payment events
+  const widget = document.querySelector('kas-gate');
+  widget.addEventListener('payment-confirmed', (e) => {
+    console.log('Paid!', e.detail);
+    window.location.href = '/order-complete';
+  });
+  widget.addEventListener('payment-expired', () => {
+    alert('Payment session expired');
   });
 </script>`}
             />
