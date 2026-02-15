@@ -35,16 +35,16 @@ import express from 'express';
 
 const app = express();
 
-app.post('/webhook', express.json(), (req, res) => {
+// IMPORTANT: Use express.raw() to get the raw body for signature verification
+app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
   const signature = req.headers['x-kasgate-signature'];
   const timestamp = req.headers['x-kasgate-timestamp'];
-  const deliveryId = req.headers['x-kasgate-delivery-id'];
   const secret = process.env.WEBHOOK_SECRET;
 
-  // Verify signature (HMAC-SHA256 of JSON body)
+  // Verify HMAC-SHA256 of raw body bytes (must match exactly)
   const expected = crypto
     .createHmac('sha256', secret)
-    .update(JSON.stringify(req.body))
+    .update(req.body) // raw Buffer, not parsed JSON
     .digest('hex');
 
   if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
@@ -57,14 +57,17 @@ app.post('/webhook', express.json(), (req, res) => {
     return res.status(401).send('Timestamp too old');
   }
 
-  const { event, sessionId, amount, address, txId } = req.body;
+  // Now parse the verified body
+  const { event, sessionId, amount, address, txId, orderId } = JSON.parse(req.body);
 
   switch (event) {
     case 'payment.confirmed':
       console.log('Payment confirmed:', sessionId, txId);
+      // TODO: fulfill the order
       break;
     case 'payment.expired':
       console.log('Payment expired:', sessionId);
+      // TODO: cancel or retry the order
       break;
   }
 
@@ -106,15 +109,16 @@ def webhook():
     signature = request.headers.get('X-KasGate-Signature')
     timestamp = request.headers.get('X-KasGate-Timestamp')
 
-    # Verify HMAC-SHA256 signature of JSON body
-    body = json.dumps(request.json, separators=(',', ':'))
+    # Verify HMAC-SHA256 signature
+    # KasGate signs JSON.stringify(payload) - use raw body to match
+    raw_body = request.get_data(as_text=True)
     expected = hmac.new(
         WEBHOOK_SECRET.encode(),
-        body.encode(),
+        raw_body.encode(),
         hashlib.sha256
     ).hexdigest()
 
-    if not hmac.compare_digest(signature, expected):
+    if not hmac.compare_digest(signature or '', expected):
         return 'Invalid signature', 401
 
     data = request.json
@@ -299,19 +303,26 @@ export function IntegrationPage() {
 <script src="https://kasgate-production.up.railway.app/widget/kasgate.js"></script>
 
 <kas-gate
-  session-id="sess_abc123"
+  merchant-id="your_merchant_id"
+  amount="10.5"
+  api-key="your_api_key"
+  server-url="https://kasgate-production.up.railway.app"
+  order-id="order_123"
   theme="dark"
 ></kas-gate>
 
 <script>
-  // Listen for payment events
+  // Listen for state changes
   const widget = document.querySelector('kas-gate');
-  widget.addEventListener('payment-confirmed', (e) => {
-    console.log('Paid!', e.detail);
-    window.location.href = '/order-complete';
-  });
-  widget.addEventListener('payment-expired', () => {
-    alert('Payment session expired');
+  widget.addEventListener('statechange', (e) => {
+    const { state, session } = e.detail;
+    if (state === 'confirmed') {
+      console.log('Paid!', session);
+      window.location.href = '/order-complete';
+    }
+    if (state === 'expired') {
+      alert('Payment session expired');
+    }
   });
 </script>`}
             />
@@ -349,10 +360,13 @@ export function IntegrationPage() {
               <ApiRow method="POST" endpoint="/api/v1/sessions" description="Create a new payment" />
               <ApiRow method="GET" endpoint="/api/v1/sessions/:id" description="Get payment status" />
               <ApiRow method="POST" endpoint="/api/v1/sessions/:id/cancel" description="Cancel a pending payment" />
-              <ApiRow method="GET" endpoint="/api/v1/sessions" description="List all payments" />
               <ApiRow method="GET" endpoint="/api/v1/merchants/me" description="Get merchant profile" />
               <ApiRow method="PATCH" endpoint="/api/v1/merchants/me" description="Update profile" />
-              <ApiRow method="GET" endpoint="/api/v1/stats" description="Get payment statistics" isLast />
+              <ApiRow method="GET" endpoint="/api/v1/merchants/me/sessions" description="List all payments" />
+              <ApiRow method="GET" endpoint="/api/v1/merchants/me/stats" description="Get payment statistics" />
+              <ApiRow method="GET" endpoint="/api/v1/merchants/me/analytics" description="Revenue analytics" />
+              <ApiRow method="POST" endpoint="/api/v1/merchants/me/regenerate-api-key" description="Regenerate API key" />
+              <ApiRow method="GET" endpoint="/api/v1/merchants/me/webhook-logs" description="View webhook delivery logs" isLast />
             </tbody>
           </table>
         </div>
