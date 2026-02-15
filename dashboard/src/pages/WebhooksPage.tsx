@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useWebhookLogs, useRetryWebhook } from '@/hooks/useWebhookLogs';
 import {
   CheckCircle2,
@@ -9,10 +8,13 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ExternalLink,
   AlertCircle,
+  Webhook,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
 import type { WebhookLog, WebhookEvent } from '@/types';
 
 const EVENT_OPTIONS = [
@@ -25,45 +27,32 @@ const EVENT_OPTIONS = [
 
 function getStatusIcon(log: WebhookLog) {
   if (log.deliveredAt && log.statusCode && log.statusCode >= 200 && log.statusCode < 300) {
-    return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+    return <CheckCircle2 className="h-[18px] w-[18px] text-zn-success" />;
   }
   if (log.nextRetryAt) {
-    return <Clock className="h-5 w-5 text-yellow-500" />;
+    return <Clock className="h-[18px] w-[18px] text-zn-warning" />;
   }
   if (log.statusCode && (log.statusCode >= 400 || log.attempts > 0)) {
-    return <XCircle className="h-5 w-5 text-red-500" />;
+    return <XCircle className="h-[18px] w-[18px] text-zn-error" />;
   }
-  return <Clock className="h-5 w-5 text-gray-500" />;
+  return <Clock className="h-[18px] w-[18px] text-zn-muted" />;
 }
 
 function getStatusText(log: WebhookLog): string {
-  if (log.deliveredAt && log.statusCode && log.statusCode >= 200 && log.statusCode < 300) {
-    return 'Delivered';
-  }
-  if (log.nextRetryAt) {
-    return 'Pending Retry';
-  }
-  if (log.attempts >= 5) {
-    return 'Failed';
-  }
-  if (log.statusCode) {
-    return `Error (${log.statusCode})`;
-  }
+  if (log.deliveredAt && log.statusCode && log.statusCode >= 200 && log.statusCode < 300) return 'Delivered';
+  if (log.nextRetryAt) return 'Pending Retry';
+  if (log.attempts >= 5) return 'Failed';
+  if (log.statusCode) return `Error (${log.statusCode})`;
   return 'Pending';
 }
 
 function getEventColor(event: WebhookEvent): string {
   switch (event) {
-    case 'payment.pending':
-      return 'bg-gray-500/20 text-gray-400';
-    case 'payment.confirming':
-      return 'bg-yellow-500/20 text-yellow-400';
-    case 'payment.confirmed':
-      return 'bg-green-500/20 text-green-400';
-    case 'payment.expired':
-      return 'bg-red-500/20 text-red-400';
-    default:
-      return 'bg-gray-500/20 text-gray-400';
+    case 'payment.pending': return 'bg-zn-alt text-zn-secondary';
+    case 'payment.confirming': return 'bg-zn-warning/20 text-zn-warning';
+    case 'payment.confirmed': return 'bg-zn-success/20 text-zn-success';
+    case 'payment.expired': return 'bg-zn-error/20 text-zn-error';
+    default: return 'bg-zn-alt text-zn-secondary';
   }
 }
 
@@ -74,100 +63,79 @@ function formatDate(dateString: string): string {
 function WebhookLogRow({ log }: { log: WebhookLog }) {
   const [expanded, setExpanded] = useState(false);
   const retryMutation = useRetryWebhook();
-
   const canRetry = !log.deliveredAt || (log.statusCode && log.statusCode >= 400);
 
   return (
-    <div className="border-b border-[#2a3444] last:border-0">
+    <div className="border-b border-zn-border last:border-0">
       <div
-        className="flex items-center gap-4 p-4 hover:bg-[#0A0F14]/50 cursor-pointer transition-colors"
+        className="flex items-center gap-4 p-4 hover:bg-zn-alt cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex-shrink-0">{getStatusIcon(log)}</div>
-
+        <div className="shrink-0">{getStatusIcon(log)}</div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={cn('px-2 py-0.5 rounded text-xs font-medium', getEventColor(log.event))}>
-              {log.event}
-            </span>
-            <span className="text-xs text-[#9ca3af]">
-              {formatDate(log.createdAt)}
-            </span>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className={cn('px-2 py-0.5 rounded text-xs font-medium', getEventColor(log.event))}>{log.event}</span>
+            <span className="text-xs text-zn-muted">{formatDate(log.createdAt)}</span>
           </div>
-          <div className="text-sm text-[#e5e7eb] truncate">
-            Session: <Link
+          <div className="text-sm text-zn-text">
+            Payment:{' '}
+            <Link
               to={`/sessions/${log.sessionId}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-[#49EACB] hover:underline"
+              className="text-zn-link hover:text-zn-link"
             >
               {log.sessionId.slice(0, 8)}...
             </Link>
           </div>
         </div>
-
-        <div className="flex-shrink-0 text-right">
-          <div className="text-sm font-medium text-[#e5e7eb]">
-            {getStatusText(log)}
-          </div>
-          <div className="text-xs text-[#9ca3af]">
-            {log.attempts} attempt{log.attempts !== 1 ? 's' : ''}
-          </div>
+        <div className="shrink-0 text-right">
+          <div className="text-sm font-medium text-zn-text">{getStatusText(log)}</div>
+          <div className="text-xs text-zn-secondary">{log.attempts} attempt{log.attempts !== 1 ? 's' : ''}</div>
         </div>
-
-        <div className="flex-shrink-0 flex items-center gap-2">
+        <div className="shrink-0 flex items-center gap-2">
           {canRetry && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                retryMutation.mutate(log.id);
-              }}
+              onClick={(e) => { e.stopPropagation(); retryMutation.mutate(log.id); }}
               disabled={retryMutation.isPending}
-              className="p-2 text-[#9ca3af] hover:text-[#49EACB] hover:bg-[#49EACB]/10 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 text-zn-muted hover:text-zn-link hover:bg-zn-link/10 rounded-md disabled:opacity-40"
               title="Retry webhook"
             >
               <RefreshCw className={cn('h-4 w-4', retryMutation.isPending && 'animate-spin')} />
             </button>
           )}
-          <ChevronRight
-            className={cn(
-              'h-4 w-4 text-[#9ca3af] transition-transform',
-              expanded && 'rotate-90'
-            )}
-          />
+          <ChevronDown className={cn('h-4 w-4 text-zn-muted transition-transform', expanded && 'rotate-180')} />
         </div>
       </div>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-3 bg-[#0A0F14]/30">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="px-4 pb-4 space-y-4 bg-zn-inset animate-fade-in">
+          <div className="grid grid-cols-2 gap-4 text-sm p-4 rounded-lg bg-zn-surface border border-zn-border">
             <div>
-              <span className="text-[#9ca3af]">Status Code:</span>
-              <span className="ml-2 text-[#e5e7eb]">{log.statusCode || 'N/A'}</span>
+              <span className="text-zn-secondary">Status Code:</span>
+              <span className="ml-2 text-zn-text font-medium">{log.statusCode || 'No response'}</span>
             </div>
             <div>
-              <span className="text-[#9ca3af]">Delivered At:</span>
-              <span className="ml-2 text-[#e5e7eb]">
-                {log.deliveredAt ? formatDate(log.deliveredAt) : 'Not delivered'}
-              </span>
+              <span className="text-zn-secondary">Delivered At:</span>
+              <span className="ml-2 text-zn-text">{log.deliveredAt ? formatDate(log.deliveredAt) : 'Not delivered yet'}</span>
             </div>
             {log.deliveryId && (
               <div className="col-span-2">
-                <span className="text-[#9ca3af]">Delivery ID:</span>
-                <span className="ml-2 text-[#e5e7eb] font-mono text-xs">{log.deliveryId}</span>
+                <span className="text-zn-secondary">Delivery ID:</span>
+                <span className="ml-2 text-zn-text font-mono text-xs">{log.deliveryId}</span>
               </div>
             )}
             {log.nextRetryAt && (
               <div className="col-span-2">
-                <span className="text-[#9ca3af]">Next Retry:</span>
-                <span className="ml-2 text-[#e5e7eb]">{formatDate(log.nextRetryAt)}</span>
+                <span className="text-zn-secondary">Next Retry:</span>
+                <span className="ml-2 text-zn-text">{formatDate(log.nextRetryAt)}</span>
               </div>
             )}
           </div>
 
           {log.payload && (
             <div>
-              <div className="text-[#9ca3af] text-sm mb-1">Payload:</div>
-              <pre className="bg-[#0A0F14] p-3 rounded-lg text-xs text-[#e5e7eb] overflow-x-auto">
+              <div className="text-zn-secondary text-sm mb-2 font-medium">Notification Data:</div>
+              <pre className="bg-zn-surface p-4 rounded-lg text-xs text-zn-secondary overflow-x-auto font-mono border border-zn-border">
                 {JSON.stringify(log.payload, null, 2)}
               </pre>
             </div>
@@ -175,8 +143,8 @@ function WebhookLogRow({ log }: { log: WebhookLog }) {
 
           {log.response && (
             <div>
-              <div className="text-[#9ca3af] text-sm mb-1">Response:</div>
-              <pre className="bg-[#0A0F14] p-3 rounded-lg text-xs text-[#e5e7eb] overflow-x-auto max-h-32">
+              <div className="text-zn-secondary text-sm mb-2 font-medium">Response:</div>
+              <pre className="bg-zn-surface p-4 rounded-lg text-xs text-zn-secondary overflow-x-auto max-h-32 font-mono border border-zn-border">
                 {log.response}
               </pre>
             </div>
@@ -192,11 +160,7 @@ export function WebhooksPage() {
   const [event, setEvent] = useState('');
   const limit = 10;
 
-  const { data, isLoading } = useWebhookLogs({
-    limit,
-    offset,
-    event: event || undefined,
-  });
+  const { data, isLoading } = useWebhookLogs({ limit, offset, event: event || undefined });
 
   const handleEventChange = (newEvent: string) => {
     setEvent(newEvent);
@@ -207,99 +171,87 @@ export function WebhooksPage() {
   const currentPage = Math.floor(offset / limit) + 1;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#e5e7eb]">Webhook Logs</h1>
-        <p className="text-[#9ca3af] mt-1">Monitor webhook deliveries and retry failed webhooks</p>
+    <div className="space-y-10">
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 pb-5">
+          <h2 className="text-lg font-semibold text-zn-text">Notification History</h2>
+          <div className="inline-flex gap-1 p-1 bg-zn-alt rounded-lg" role="tablist">
+            {EVENT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                role="tab"
+                aria-selected={event === opt.value}
+                onClick={() => handleEventChange(opt.value)}
+                className={cn(
+                  'px-3 py-1.5 rounded-md text-sm font-medium',
+                  event === opt.value ? 'bg-zn-accent/20 text-zn-accent' : 'text-zn-secondary hover:text-zn-text'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <RefreshCw className="h-8 w-8 text-zn-accent animate-spin" />
+          </div>
+        ) : data?.logs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+            <div className="w-16 h-16 rounded-lg bg-zn-alt flex items-center justify-center mb-4">
+              <AlertCircle className="h-8 w-8 text-zn-muted" />
+            </div>
+            <p className="text-zn-text font-medium text-lg mb-1">No webhook logs found</p>
+            <p className="text-zn-secondary text-sm">Webhook deliveries will appear here when payment events occur</p>
+          </div>
+        ) : (
+          <>
+            <div>
+              {data?.logs.map((log) => <WebhookLogRow key={log.id} log={log} />)}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-4 border-t border-zn-border">
+                <span className="text-sm text-zn-secondary tabular-nums">
+                  Showing <span className="text-zn-text font-medium">{offset + 1}</span>-
+                  <span className="text-zn-text font-medium">{Math.min(offset + limit, data?.total ?? 0)}</span> of{' '}
+                  <span className="text-zn-text font-medium">{data?.total ?? 0}</span>
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-zn-secondary px-2 tabular-nums">
+                    Page <span className="text-zn-text font-medium">{currentPage}</span> of{' '}
+                    <span className="text-zn-text font-medium">{totalPages}</span>
+                  </span>
+                  <Button variant="secondary" size="sm" onClick={() => setOffset(offset + limit)} disabled={offset + limit >= (data?.total ?? 0)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Delivery History</CardTitle>
-          <select
-            value={event}
-            onChange={(e) => handleEventChange(e.target.value)}
-            className="bg-[#0A0F14] border border-[#2a3444] rounded-lg px-3 py-2 text-sm text-[#e5e7eb] focus:border-[#49EACB] focus:outline-none"
-          >
-            {EVENT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 text-[#49EACB] animate-spin" />
-            </div>
-          ) : data?.logs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <AlertCircle className="h-12 w-12 text-[#9ca3af] mb-4" />
-              <p className="text-[#e5e7eb] font-medium">No webhook logs found</p>
-              <p className="text-[#9ca3af] text-sm mt-1">
-                Webhook deliveries will appear here when payment events occur
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="divide-y divide-[#2a3444]">
-                {data?.logs.map((log) => (
-                  <WebhookLogRow key={log.id} log={log} />
-                ))}
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between p-4 border-t border-[#2a3444]">
-                  <span className="text-sm text-[#9ca3af]">
-                    Showing {offset + 1}-{Math.min(offset + limit, data?.total ?? 0)} of {data?.total ?? 0}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setOffset(Math.max(0, offset - limit))}
-                      disabled={offset === 0}
-                      className="p-2 text-[#9ca3af] hover:text-[#e5e7eb] hover:bg-[#0A0F14] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <span className="text-sm text-[#e5e7eb] px-2">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setOffset(offset + limit)}
-                      disabled={offset + limit >= (data?.total ?? 0)}
-                      className="p-2 text-[#9ca3af] hover:text-[#e5e7eb] hover:bg-[#0A0F14] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Info card */}
-      <Card>
-        <CardContent className="py-4">
-          <div className="flex items-start gap-3">
-            <ExternalLink className="h-5 w-5 text-[#49EACB] flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-sm font-medium text-[#e5e7eb]">About Webhooks</h3>
-              <p className="text-sm text-[#9ca3af] mt-1">
-                KasGate sends webhook notifications for payment events. Failed deliveries are
-                automatically retried up to 5 times with exponential backoff. You can also
-                manually retry from this page.
-              </p>
-              <Link to="/integration" className="text-sm text-[#49EACB] hover:underline mt-2 inline-block">
-                View integration guide →
-              </Link>
-            </div>
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-9 h-9 bg-zn-alt rounded-lg flex items-center justify-center shrink-0">
+            <Webhook className="h-[18px] w-[18px] text-zn-secondary" />
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <h3 className="font-semibold text-zn-text mb-1">About Payment Notifications</h3>
+            <p className="text-sm text-zn-secondary">
+              KasGate automatically alerts your server when payments are received, confirmed, or expire. Failed alerts are retried up to 5 times.
+            </p>
+            <Link to="/integration" className="inline-flex items-center gap-1.5 text-sm text-zn-link hover:text-zn-link font-medium mt-3">
+              View setup guide <ExternalLink className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

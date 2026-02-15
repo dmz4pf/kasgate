@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
+import { Copy, Check, Terminal, Code, Globe, Webhook, ArrowRight, Key, Zap, BookOpen } from 'lucide-react';
+import { WidgetPreview } from '@/components/widget/WidgetPreview';
 import { cn, copyToClipboard } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
+import { Link } from 'react-router-dom';
 
 const TABS = ['JavaScript', 'Python', 'cURL'] as const;
 type Tab = (typeof TABS)[number];
 
 const CODE_EXAMPLES: Record<Tab, { create: string; webhook: string }> = {
   JavaScript: {
-    create: `const response = await fetch('https://api.kasgate.io/v1/sessions', {
+    create: `// 1. Create a payment session
+const response = await fetch('/api/v1/sessions', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -18,40 +20,44 @@ const CODE_EXAMPLES: Record<Tab, { create: string; webhook: string }> = {
   body: JSON.stringify({
     orderId: 'order_123',
     amount: '10.00',
-    currency: 'USD',
+    currency: 'KAS',
+    callbackUrl: 'https://yoursite.com/payment-complete',
     metadata: { customerId: 'cust_456' }
   })
 });
 
 const session = await response.json();
-console.log(session.paymentUrl);`,
+console.log(session.id);
+console.log(session.address);
+console.log(session.amount);
+console.log(session.expiresAt);`,
     webhook: `import crypto from 'crypto';
+import express from 'express';
 
-function verifyWebhook(payload, signature, secret) {
-  const expected = crypto
-    .createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
+const app = express();
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expected)
-  );
-}
-
-// Express.js example
 app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
   const signature = req.headers['x-kasgate-signature'];
+  const secret = process.env.WEBHOOK_SECRET;
 
-  if (!verifyWebhook(req.body, signature, process.env.WEBHOOK_SECRET)) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(req.body)
+    .digest('hex');
+
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
     return res.status(401).send('Invalid signature');
   }
 
   const event = JSON.parse(req.body);
 
-  if (event.type === 'session.confirmed') {
-    // Handle successful payment
-    console.log('Payment confirmed:', event.session.id);
+  switch (event.type) {
+    case 'payment.confirmed':
+      console.log('Payment confirmed:', event.session.id);
+      break;
+    case 'payment.expired':
+      console.log('Payment expired:', event.session.id);
+      break;
   }
 
   res.status(200).send('OK');
@@ -61,7 +67,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
     create: `import requests
 
 response = requests.post(
-    'https://api.kasgate.io/v1/sessions',
+    '/api/v1/sessions',
     headers={
         'Content-Type': 'application/json',
         'X-API-Key': 'your_api_key'
@@ -69,219 +75,308 @@ response = requests.post(
     json={
         'orderId': 'order_123',
         'amount': '10.00',
-        'currency': 'USD',
+        'currency': 'KAS',
+        'callbackUrl': 'https://yoursite.com/payment-complete',
         'metadata': {'customerId': 'cust_456'}
     }
 )
 
 session = response.json()
-print(session['paymentUrl'])`,
+print(session['id'])
+print(session['address'])
+print(session['amount'])
+print(session['expiresAt'])`,
     webhook: `import hmac
 import hashlib
 from flask import Flask, request
 
 app = Flask(__name__)
+WEBHOOK_SECRET = 'your_webhook_secret'
 
-def verify_webhook(payload, signature, secret):
+def verify_signature(payload, signature, secret):
     expected = hmac.new(
         secret.encode(),
         payload,
         hashlib.sha256
     ).hexdigest()
-
     return hmac.compare_digest(signature, expected)
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
     signature = request.headers.get('X-KasGate-Signature')
 
-    if not verify_webhook(request.data, signature, WEBHOOK_SECRET):
+    if not verify_signature(request.data, signature, WEBHOOK_SECRET):
         return 'Invalid signature', 401
 
     event = request.json
 
-    if event['type'] == 'session.confirmed':
-        # Handle successful payment
+    if event['type'] == 'payment.confirmed':
         print(f"Payment confirmed: {event['session']['id']}")
+
+    elif event['type'] == 'payment.expired':
+        print(f"Payment expired: {event['session']['id']}")
 
     return 'OK', 200`,
   },
   cURL: {
-    create: `curl -X POST https://api.kasgate.io/v1/sessions \\
+    create: `# Create a payment session
+curl -X POST /api/v1/sessions \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: your_api_key" \\
   -d '{
     "orderId": "order_123",
     "amount": "10.00",
-    "currency": "USD",
-    "metadata": {"customerId": "cust_456"}
+    "currency": "KAS",
+    "callbackUrl": "https://yoursite.com/payment-complete",
+    "metadata": { "customerId": "cust_456" }
   }'`,
-    webhook: `# Webhook payload example
+    webhook: `# Example webhook payload:
+# POST https://yoursite.com/webhook
+# Headers:
+#   X-KasGate-Signature: <hmac-sha256-hex>
+#   Content-Type: application/json
+
 {
-  "type": "session.confirmed",
+  "type": "payment.confirmed",
   "session": {
     "id": "sess_abc123",
     "orderId": "order_123",
     "status": "confirmed",
-    "kaspaAmount": "100.50000000",
-    "txHash": "abc123..."
+    "amount": "10",
+    "address": "kaspa:qr...",
+    "txId": "abc123def456...",
+    "confirmedAt": "2026-02-11T09:55:00Z"
   }
 }
 
-# Verify signature:
-# 1. Get raw request body
-# 2. Compute HMAC-SHA256 with your webhook secret
-# 3. Compare with X-KasGate-Signature header`,
+# Verify: HMAC-SHA256(raw_body, webhook_secret) == X-KasGate-Signature`,
   },
+};
+
+const tabIcons: Record<Tab, React.ComponentType<{ className?: string }>> = {
+  JavaScript: Code,
+  Python: Terminal,
+  cURL: Terminal,
 };
 
 export function IntegrationPage() {
   const [activeTab, setActiveTab] = useState<Tab>('JavaScript');
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#e5e7eb]">Integration Guide</h1>
-        <p className="text-[#9ca3af] mt-1">
-          Learn how to integrate KasGate payments into your application
-        </p>
+    <div className="space-y-10">
+      {/* Quick Start */}
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-9 h-9 rounded-md bg-zn-alt flex items-center justify-center">
+            <Zap className="h-[18px] w-[18px] text-zn-link" />
+          </div>
+          <h2 className="text-lg font-semibold text-zn-text">Quick Start — 3 Steps</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <QuickStartStep number={1} title="Get Your API Key" description="Find your API key in Settings." link="/settings" linkLabel="Go to Settings" />
+          <QuickStartStep number={2} title="Create a Payment" description="Send a request with amount and order ID. KasGate returns a unique Kaspa address." />
+          <QuickStartStep number={3} title="Receive Payment Alerts" description="Set your notification URL in Settings." link="/settings" linkLabel="Set Notification URL" />
+        </div>
       </div>
 
       {/* Language Tabs */}
-      <div className="flex gap-2 border-b border-[#2a3444]">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              'px-4 py-2 text-sm font-medium transition-colors -mb-px',
-              activeTab === tab
-                ? 'text-[#49EACB] border-b-2 border-[#49EACB]'
-                : 'text-[#9ca3af] hover:text-[#e5e7eb]'
-            )}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="inline-flex gap-1 p-1 bg-zn-alt rounded-lg">
+        {TABS.map((tab) => {
+          const Icon = tabIcons[tab];
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                'flex items-center gap-2 px-4 h-8 rounded-md text-sm font-medium',
+                activeTab === tab ? 'bg-zn-accent/20 text-zn-accent' : 'text-zn-secondary hover:text-zn-text'
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {tab}
+            </button>
+          );
+        })}
       </div>
 
       {/* Create Session */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Create a Payment Session</CardTitle>
-          <CardDescription>
-            Create a new payment session to accept Kaspa payments
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeBlock code={CODE_EXAMPLES[activeTab].create} />
-        </CardContent>
-      </Card>
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl overflow-hidden">
+        <div className="px-6 py-6 border-b border-zn-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-md bg-zn-alt flex items-center justify-center">
+              <Code className="h-[18px] w-[18px] text-zn-link" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-zn-text">Step 1: Create a Payment</h2>
+              <p className="text-sm text-zn-secondary mt-0.5">
+                <code className="text-zn-link">POST /api/v1/sessions</code>
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6"><CodeBlock code={CODE_EXAMPLES[activeTab].create} /></div>
+      </div>
 
-      {/* Webhook Verification */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Webhook Verification</CardTitle>
-          <CardDescription>
-            Verify webhook signatures to ensure requests are authentic
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* Webhook */}
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl overflow-hidden">
+        <div className="px-6 py-6 border-b border-zn-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-zn-alt rounded-lg flex items-center justify-center">
+              <Webhook className="h-[18px] w-[18px] text-zn-secondary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-zn-text">Step 2: Receive Payment Alerts</h2>
+              <p className="text-sm text-zn-secondary mt-0.5">Verify the signature header</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
           <CodeBlock code={CODE_EXAMPLES[activeTab].webhook} />
-        </CardContent>
-      </Card>
+          <div className="mt-6 p-4 rounded-lg bg-zn-alt border border-zn-border">
+            <h3 className="text-sm font-medium text-zn-text mb-3">Payment Alert Types</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-zn-muted" />
+                <code className="text-zn-secondary">payment.pending</code>
+                <span className="text-zn-secondary">— Waiting for customer</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-zn-warning" />
+                <code className="text-zn-warning">payment.confirming</code>
+                <span className="text-zn-secondary">— Detected on network</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-zn-success" />
+                <code className="text-zn-success">payment.confirmed</code>
+                <span className="text-zn-secondary">— Complete</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-zn-error" />
+                <code className="text-zn-error">payment.expired</code>
+                <span className="text-zn-secondary">— Not paid in time</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {/* Widget Integration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Widget Integration</CardTitle>
-          <CardDescription>
-            Embed the payment widget directly on your checkout page
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeBlock
-            code={`<!-- Add to your checkout page -->
+      {/* Widget */}
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl overflow-hidden">
+        <div className="px-6 py-6 border-b border-zn-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-zn-alt rounded-lg flex items-center justify-center">
+              <Globe className="h-[18px] w-[18px] text-zn-secondary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-zn-text">Optional: Payment Widget</h2>
+              <p className="text-sm text-zn-secondary mt-0.5">A ready-made payment form for your website</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <CodeBlock
+              code={`<!-- Add to your checkout page -->
 <div id="kasgate-widget"></div>
 
-<script src="https://cdn.kasgate.io/widget.js"></script>
+<script src="/widget.js"></script>
 <script>
   KasGate.init({
-    sessionId: 'sess_abc123', // From create session response
+    sessionId: 'sess_abc123',
     onSuccess: (session) => {
-      console.log('Payment successful!', session);
-      // Redirect to success page
+      window.location.href = '/order-complete';
     },
-    onError: (error) => {
-      console.error('Payment failed:', error);
+    onExpired: () => {
+      alert('Payment session expired');
     }
   });
 </script>`}
-          />
-        </CardContent>
-      </Card>
+            />
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-sm text-zn-secondary text-center">Live Preview</p>
+              <WidgetPreview theme="dark" />
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* API Reference */}
-      <Card>
-        <CardHeader>
-          <CardTitle>API Reference</CardTitle>
-          <CardDescription>Key endpoints and their usage</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#2a3444]">
-                  <th className="text-left py-2 text-[#9ca3af] font-medium">
-                    Endpoint
-                  </th>
-                  <th className="text-left py-2 text-[#9ca3af] font-medium">
-                    Method
-                  </th>
-                  <th className="text-left py-2 text-[#9ca3af] font-medium">
-                    Description
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-[#2a3444]">
-                  <td className="py-2 font-mono text-[#49EACB]">/v1/sessions</td>
-                  <td className="py-2 text-[#e5e7eb]">POST</td>
-                  <td className="py-2 text-[#9ca3af]">Create payment session</td>
-                </tr>
-                <tr className="border-b border-[#2a3444]">
-                  <td className="py-2 font-mono text-[#49EACB]">
-                    /v1/sessions/:id
-                  </td>
-                  <td className="py-2 text-[#e5e7eb]">GET</td>
-                  <td className="py-2 text-[#9ca3af]">Get session details</td>
-                </tr>
-                <tr className="border-b border-[#2a3444]">
-                  <td className="py-2 font-mono text-[#49EACB]">
-                    /v1/sessions/:id/cancel
-                  </td>
-                  <td className="py-2 text-[#e5e7eb]">POST</td>
-                  <td className="py-2 text-[#9ca3af]">Cancel pending session</td>
-                </tr>
-                <tr>
-                  <td className="py-2 font-mono text-[#49EACB]">
-                    /v1/merchants/me
-                  </td>
-                  <td className="py-2 text-[#e5e7eb]">GET</td>
-                  <td className="py-2 text-[#9ca3af]">Get merchant profile</td>
-                </tr>
-              </tbody>
-            </table>
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl overflow-hidden">
+        <div className="px-6 py-6 border-b border-zn-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-zn-alt rounded-lg flex items-center justify-center">
+              <BookOpen className="h-[18px] w-[18px] text-zn-secondary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-zn-text">API Reference</h2>
+              <p className="text-sm text-zn-secondary mt-0.5">All endpoints use <code className="text-zn-secondary">X-API-Key</code> header</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-zn-surface border-b border-zn-border">
+                <th className="text-left h-10 px-5 text-[11px] font-semibold text-zn-muted uppercase tracking-[0.05em]">Method</th>
+                <th className="text-left h-10 px-5 text-[11px] font-semibold text-zn-muted uppercase tracking-[0.05em]">Endpoint</th>
+                <th className="text-left h-10 px-5 text-[11px] font-semibold text-zn-muted uppercase tracking-[0.05em]">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ApiRow method="POST" endpoint="/api/v1/sessions" description="Create a new payment" />
+              <ApiRow method="GET" endpoint="/api/v1/sessions/:id" description="Get payment status" />
+              <ApiRow method="POST" endpoint="/api/v1/sessions/:id/cancel" description="Cancel a pending payment" />
+              <ApiRow method="GET" endpoint="/api/v1/sessions" description="List all payments" />
+              <ApiRow method="GET" endpoint="/api/v1/merchants/me" description="Get merchant profile" />
+              <ApiRow method="PUT" endpoint="/api/v1/merchants/me" description="Update profile" />
+              <ApiRow method="GET" endpoint="/api/v1/stats" description="Get payment statistics" isLast />
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Help */}
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-9 h-9 bg-zn-alt rounded-lg flex items-center justify-center shrink-0">
+            <Key className="h-[18px] w-[18px] text-zn-secondary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-zn-text mb-1">Need your API keys?</h3>
+            <p className="text-sm text-zn-secondary">
+              Your API Key and Notification Secret are in{' '}
+              <Link to="/settings" className="text-zn-link font-medium hover:text-zn-link">Settings</Link>.
+              Check delivery status on the{' '}
+              <Link to="/webhooks" className="text-zn-link font-medium hover:text-zn-link">Notifications page</Link>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickStartStep({ number, title, description, link, linkLabel }: {
+  number: number; title: string; description: string; link?: string; linkLabel?: string;
+}) {
+  return (
+    <div className="p-5 rounded-lg bg-zn-alt border border-zn-border">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-7 h-7 rounded-md bg-zn-alt flex items-center justify-center text-sm font-semibold text-zn-link">{number}</div>
+        <h3 className="text-sm font-semibold text-zn-text">{title}</h3>
+      </div>
+      <p className="text-sm text-zn-secondary">{description}</p>
+      {link && (
+        <Link to={link} className="inline-flex items-center gap-1.5 text-sm text-zn-link hover:text-zn-link font-medium mt-3">
+          {linkLabel} <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      )}
     </div>
   );
 }
 
 function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
-
   const handleCopy = async () => {
     await copyToClipboard(code);
     setCopied(true);
@@ -291,19 +386,36 @@ function CodeBlock({ code }: { code: string }) {
 
   return (
     <div className="relative group">
-      <pre className="bg-[#0A0F14] rounded-lg p-4 overflow-x-auto text-sm text-[#e5e7eb] font-mono">
-        {code}
-      </pre>
+      <pre className="bg-zn-alt rounded-lg p-5 overflow-x-auto text-sm text-zn-secondary font-mono border border-zn-border leading-relaxed">{code}</pre>
       <button
         onClick={handleCopy}
-        className="absolute top-2 right-2 p-2 rounded-lg bg-[#151C28] border border-[#2a3444] text-[#9ca3af] hover:text-[#e5e7eb] opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-3 right-3 p-1.5 rounded bg-zn-surface border border-zn-border text-zn-muted hover:text-zn-text"
       >
-        {copied ? (
-          <Check className="h-4 w-4 text-green-500" />
-        ) : (
-          <Copy className="h-4 w-4" />
-        )}
+        {copied ? <Check className="h-3.5 w-3.5 text-zn-success" /> : <Copy className="h-3.5 w-3.5" />}
       </button>
     </div>
+  );
+}
+
+function ApiRow({ method, endpoint, description, isLast }: {
+  method: string; endpoint: string; description: string; isLast?: boolean;
+}) {
+  const methodColors: Record<string, string> = {
+    GET: 'bg-zn-success/20 text-zn-success',
+    POST: 'bg-zn-link/20 text-zn-link',
+    PUT: 'bg-zn-warning/20 text-zn-warning',
+    DELETE: 'bg-zn-error/20 text-zn-error',
+  };
+
+  return (
+    <tr className={cn('h-[52px]', !isLast && 'border-b border-zn-border')}>
+      <td className="px-5">
+        <span className={cn('px-2 py-0.5 rounded text-xs font-semibold uppercase', methodColors[method] || 'bg-zn-alt text-zn-secondary')}>
+          {method}
+        </span>
+      </td>
+      <td className="px-5 font-mono text-zn-link text-sm">{endpoint}</td>
+      <td className="px-5 text-zn-secondary">{description}</td>
+    </tr>
   );
 }

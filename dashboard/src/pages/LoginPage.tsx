@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Key } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { useAuthStore } from '@/stores/authStore';
 import { api } from '@/lib/api';
 import { toast } from '@/components/ui/Toast';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 export function LoginPage() {
   const [apiKey, setApiKey] = useState('');
@@ -25,12 +24,10 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Temporarily set the API key to verify it
       storeApiKey(apiKey);
-
       const merchant = await api.verifyApiKey(apiKey);
       setMerchant(merchant);
-      toast('success', `Welcome, ${merchant.businessName}!`);
+      toast('success', `Welcome back, ${merchant.name}!`);
       navigate(from, { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid API key';
@@ -43,59 +40,57 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0F14] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 rounded-2xl bg-[#49EACB]/10 flex items-center justify-center">
-            <div className="w-10 h-10 rounded-xl bg-[#49EACB] flex items-center justify-center">
-              <span className="text-[#0A0F14] font-bold text-xl">K</span>
-            </div>
-          </div>
-          <CardTitle className="text-2xl">KasGate Dashboard</CardTitle>
-          <CardDescription>
-            Enter your API key to access the merchant dashboard
-          </CardDescription>
-        </CardHeader>
+    <div className="min-h-screen bg-zn-bg flex items-center justify-center p-4 relative">
+      <div className="bg-ambient" />
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="apiKey" className="block text-sm font-medium text-[#9ca3af] mb-2">
+      <div className="w-full max-w-[400px] relative z-[1]">
+        <div className="bg-zn-surface/70 backdrop-blur-xl rounded-2xl border border-zn-border p-10">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-10 h-10 rounded-[10px] bg-gradient-to-br from-zn-accent to-zn-purple flex items-center justify-center mb-6 shadow-lg shadow-zn-accent/20">
+              <span className="text-zn-bg font-bold text-base">K</span>
+            </div>
+            <h2 className="text-xl font-semibold text-gradient mb-1">Welcome to KasGate</h2>
+            <p className="text-sm text-zn-secondary mb-6">Enter your API key to manage your Kaspa payments</p>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div className="mb-5">
+              <label htmlFor="apiKey" className="block text-sm font-medium text-zn-text mb-1.5">
                 API Key
               </label>
-              <div className="relative">
-                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#9ca3af]" />
-                <Input
-                  id="apiKey"
-                  type="password"
-                  placeholder="kg_xxxxxxxxxxxxxxxxxxxxxxxx"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  error={error}
-                  className="pl-10"
-                  autoComplete="off"
-                />
-              </div>
+              <Input
+                id="apiKey"
+                type="password"
+                placeholder="Paste your API key here"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                autoComplete="off"
+                icon={<Key className="h-[18px] w-[18px]" />}
+                error={error}
+              />
             </div>
 
             <Button
               type="submit"
-              className="w-full"
+              size="lg"
+              disabled={!apiKey.trim() || isLoading}
               isLoading={isLoading}
-              disabled={!apiKey.trim()}
+              className="w-full"
             >
               Sign In
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-[#9ca3af]">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-[#49EACB] hover:underline">
-              Create one
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+          <div className="border-t border-zn-border mt-6 pt-5">
+            <p className="text-sm text-zn-secondary text-center">
+              Don't have an account?{' '}
+              <Link to="/register" className="text-zn-link font-medium hover:text-zn-link/80">
+                Create one
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

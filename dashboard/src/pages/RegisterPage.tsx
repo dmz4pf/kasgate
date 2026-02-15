@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
+import { CheckCircle, Copy, AlertTriangle, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from '@/components/ui/Toast';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 interface RegisterResponse {
   id: string;
@@ -26,6 +27,7 @@ export function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [registrationResult, setRegistrationResult] = useState<RegisterResponse | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const navigate = useNavigate();
   const { setApiKey, setMerchant } = useAuthStore();
@@ -93,10 +95,9 @@ export function RegisterPage() {
       setApiKey(registrationResult.apiKey);
       setMerchant({
         id: registrationResult.id,
-        businessName: registrationResult.name,
+        name: registrationResult.name,
         email: registrationResult.email ?? '',
         webhookUrl: registrationResult.webhookUrl,
-        apiKeyLastFour: registrationResult.apiKey.slice(-4),
         createdAt: registrationResult.createdAt,
       });
       navigate('/', { replace: true });
@@ -108,97 +109,90 @@ export function RegisterPage() {
     toast('success', `${label} copied to clipboard`);
   };
 
-  // Success screen
   if (registrationResult) {
     return (
-      <div className="min-h-screen bg-[#0A0F14] flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg">
-          <CardHeader>
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+      <div className="min-h-screen bg-zn-bg flex items-center justify-center p-4 relative">
+        <div className="bg-ambient" />
+        <div className="w-full max-w-lg relative z-[1]">
+          <div className="bg-zn-surface/70 backdrop-blur-xl rounded-2xl border border-zn-border p-10">
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-zn-success/10 flex items-center justify-center mb-4">
+                <CheckCircle className="w-6 h-6 text-zn-success" />
               </div>
-            </div>
-            <CardTitle className="text-center text-2xl text-green-500">Registration Complete!</CardTitle>
-            <CardDescription className="text-center">
-              Save these credentials securely. You won't be able to see them again.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="p-4 rounded-lg bg-[#0A0F14] border border-[#2a3441]">
-              <label className="block text-sm font-medium text-[#9ca3af] mb-2">API Key</label>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-[#49EACB] text-sm break-all">{registrationResult.apiKey}</code>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => copyToClipboard(registrationResult.apiKey, 'API Key')}
-                >
-                  Copy
-                </Button>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-[#0A0F14] border border-[#2a3441]">
-              <label className="block text-sm font-medium text-[#9ca3af] mb-2">Webhook Secret</label>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-[#49EACB] text-sm break-all">{registrationResult.webhookSecret}</code>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => copyToClipboard(registrationResult.webhookSecret, 'Webhook Secret')}
-                >
-                  Copy
-                </Button>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-              <p className="text-sm text-yellow-500">
-                Store these credentials in a safe place. If lost, you'll need to regenerate them.
+              <h2 className="text-xl font-semibold text-gradient mb-1">Account Created!</h2>
+              <p className="text-sm text-zn-secondary">
+                Save these keys somewhere safe — you won't be able to see them again after leaving this page.
               </p>
             </div>
 
-            <Button onClick={handleContinue} className="w-full mt-4">
-              Continue to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
+            <div className="flex flex-col gap-4">
+              <div className="bg-zn-alt border border-zn-border rounded-lg p-4">
+                <label className="block text-sm font-medium text-zn-text mb-2">Your API Key</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-zn-link text-sm break-all font-mono">{registrationResult.apiKey}</code>
+                  <button
+                    onClick={() => copyToClipboard(registrationResult.apiKey, 'API Key')}
+                    className="shrink-0 p-1.5 rounded bg-zn-surface border border-zn-border text-zn-muted hover:text-zn-text transition-colors"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-zn-alt border border-zn-border rounded-lg p-4">
+                <label className="block text-sm font-medium text-zn-text mb-2">Notification Secret</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-zn-link text-sm break-all font-mono">{registrationResult.webhookSecret}</code>
+                  <button
+                    onClick={() => copyToClipboard(registrationResult.webhookSecret, 'Webhook Secret')}
+                    className="shrink-0 p-1.5 rounded bg-zn-surface border border-zn-border text-zn-muted hover:text-zn-text transition-colors"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-zn-warning/10 border border-zn-warning/30 rounded-lg p-4 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-zn-warning shrink-0 mt-0.5" />
+                <p className="text-sm text-zn-warning">
+                  Keep these keys private and secure. If you lose them, you can generate new ones in Settings.
+                </p>
+              </div>
+
+              <Button onClick={handleContinue} size="lg" className="w-full mt-2">
+                Continue to Dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0F14] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-[#49EACB]/10 flex items-center justify-center">
-              <div className="w-10 h-10 rounded-xl bg-[#49EACB] flex items-center justify-center">
-                <span className="text-[#0A0F14] font-bold text-xl">K</span>
-              </div>
+    <div className="min-h-screen bg-zn-bg flex items-center justify-center p-4 relative">
+      <div className="bg-ambient" />
+      <div className="w-full max-w-[400px] relative z-[1]">
+        <div className="bg-zn-surface/70 backdrop-blur-xl rounded-2xl border border-zn-border p-10">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-10 h-10 rounded-[10px] bg-gradient-to-br from-zn-accent to-zn-purple flex items-center justify-center mb-6 shadow-lg shadow-zn-accent/20">
+              <span className="text-zn-bg font-bold text-base">K</span>
             </div>
+            <h2 className="text-xl font-semibold text-gradient mb-1">Create Merchant Account</h2>
+            <p className="text-sm text-zn-secondary mb-6">Register to start accepting Kaspa payments</p>
           </div>
-          <CardTitle className="text-center text-2xl">Create Merchant Account</CardTitle>
-          <CardDescription className="text-center">
-            Register to start accepting Kaspa payments
-          </CardDescription>
-        </CardHeader>
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {errors.form && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-                {errors.form}
+              <div className="bg-zn-error/10 border border-zn-error/30 rounded-lg p-3 flex items-start gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-zn-error shrink-0 mt-0.5" />
+                <p className="text-sm text-zn-error">{errors.form}</p>
               </div>
             )}
 
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-[#9ca3af] mb-2">
-                Business Name <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium text-zn-text mb-1.5">
+                Business Name <span className="text-zn-error">*</span>
               </label>
               <Input
                 id="name"
@@ -206,12 +200,13 @@ export function RegisterPage() {
                 value={formData.name}
                 onChange={handleChange('name')}
                 error={errors.name}
+                disabled={isLoading}
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[#9ca3af] mb-2">
-                Email <span className="text-[#6b7280]">(optional)</span>
+              <label className="block text-sm font-medium text-zn-text mb-1.5">
+                Email <span className="text-zn-muted text-xs">(optional)</span>
               </label>
               <Input
                 id="email"
@@ -220,63 +215,85 @@ export function RegisterPage() {
                 value={formData.email}
                 onChange={handleChange('email')}
                 error={errors.email}
+                disabled={isLoading}
               />
             </div>
 
             <div>
-              <label htmlFor="xpub" className="block text-sm font-medium text-[#9ca3af] mb-2">
-                Extended Public Key (xPub) <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium text-zn-text mb-1.5">
+                Kaspa Wallet Key (xPub) <span className="text-zn-error">*</span>
               </label>
               <textarea
                 id="xpub"
                 placeholder="kpub..."
                 value={formData.xpub}
                 onChange={handleChange('xpub')}
-                className={`w-full px-4 py-3 rounded-lg bg-[#0A0F14] border text-white placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-[#49EACB]/50 resize-none h-20 text-sm font-mono ${
-                  errors.xpub ? 'border-red-500' : 'border-[#2a3441]'
-                }`}
+                disabled={isLoading}
+                rows={3}
+                className={cn(
+                  'w-full rounded-md px-3 py-2.5 text-sm font-mono',
+                  'bg-zn-alt border border-zn-border text-zn-text placeholder:text-zn-muted',
+                  'focus:outline-none focus:ring-2 focus:ring-zn-accent focus:border-transparent resize-none',
+                  errors.xpub && 'border-zn-error focus:ring-zn-error focus:border-transparent'
+                )}
               />
-              {errors.xpub && <p className="mt-1 text-sm text-red-500">{errors.xpub}</p>}
-              <p className="mt-1.5 text-xs text-[#6b7280]">
-                Your xPub key from a Kaspa wallet. Used to derive unique payment addresses.
-              </p>
+              {errors.xpub && <p className="mt-1.5 text-xs text-zn-error">{errors.xpub}</p>}
+              {!errors.xpub && (
+                <p className="mt-1.5 text-xs text-zn-secondary">
+                  This key lets KasGate create unique payment addresses for each customer.
+                </p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="webhookUrl" className="block text-sm font-medium text-[#9ca3af] mb-2">
-                Webhook URL <span className="text-[#6b7280]">(optional)</span>
-              </label>
-              <Input
-                id="webhookUrl"
-                type="url"
-                placeholder="https://mysite.com/webhook"
-                value={formData.webhookUrl}
-                onChange={handleChange('webhookUrl')}
-                error={errors.webhookUrl}
-              />
-              <p className="mt-1.5 text-xs text-[#6b7280]">
-                We'll send payment notifications to this URL.
-              </p>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1.5 text-sm font-medium text-zn-secondary hover:text-zn-text transition-colors"
+              >
+                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showAdvanced && 'rotate-180')} />
+                Notification settings
+              </button>
+              {showAdvanced && (
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-zn-text mb-1.5">Webhook URL</label>
+                  <Input
+                    id="webhookUrl"
+                    type="url"
+                    placeholder="https://mysite.com/webhook"
+                    value={formData.webhookUrl}
+                    onChange={handleChange('webhookUrl')}
+                    error={errors.webhookUrl}
+                    disabled={isLoading}
+                  />
+                  {!errors.webhookUrl && (
+                    <p className="mt-1.5 text-xs text-zn-secondary">
+                      We'll notify your server when payments are received, confirmed, or expire.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <Button
               type="submit"
-              className="w-full"
+              size="lg"
+              disabled={!formData.name.trim() || !formData.xpub.trim() || isLoading}
               isLoading={isLoading}
-              disabled={!formData.name.trim() || !formData.xpub.trim()}
+              className="w-full mt-1"
             >
               Create Account
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-[#9ca3af]">
-            Already have an API key?{' '}
-            <Link to="/login" className="text-[#49EACB] hover:underline">
-              Sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+          <div className="border-t border-zn-border mt-6 pt-5">
+            <p className="text-sm text-zn-secondary text-center">
+              Already have an API key?{' '}
+              <Link to="/login" className="text-zn-link font-medium hover:text-zn-link/80">Sign in</Link>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,62 +1,159 @@
 @import "tailwindcss";
 
-/* Kaspa brand theme */
-:root {
-  --color-primary: #49EACB;
-  --color-primary-hover: #3dd4b7;
-  --color-background: #0A0F14;
-  --color-surface: #151C28;
-  --color-surface-hover: #1c2535;
-  --color-border: #2a3444;
-  --color-text: #e5e7eb;
-  --color-text-muted: #9ca3af;
+@theme {
+  /* === Depth Hierarchy (Luxe Navy) === */
+  --color-zn-bg: #030712;
+  --color-zn-surface: #0f1419;
+  --color-zn-elevated: #1a1f2e;
+  --color-zn-alt: #1e2536;
+  --color-zn-inset: #080c14;
 
-  /* Status colors */
-  --color-pending: #eab308;
-  --color-confirming: #3b82f6;
-  --color-confirmed: #22c55e;
-  --color-expired: #6b7280;
-  --color-failed: #ef4444;
-}
+  /* === Text === */
+  --color-zn-text: #f8fafc;
+  --color-zn-secondary: #94a3b8;
+  --color-zn-muted: #475569;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  /* === Brand === */
+  --color-zn-accent: #49eacb;
+  --color-zn-link: #49eacb;
+  --color-zn-gold: #fbbf24;
+  --color-zn-purple: #a78bfa;
+
+  /* === Borders === */
+  --color-zn-border: #253245;
+  --color-zn-border-strong: #334766;
+
+  /* === Semantic === */
+  --color-zn-success: #22c55e;
+  --color-zn-warning: #fbbf24;
+  --color-zn-error: #ef4444;
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-zn-bg);
+  color: var(--color-zn-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-#root {
-  min-height: 100vh;
+#root { min-height: 100vh; }
+
+/* === Ambient background glow === */
+.bg-ambient {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, var(--color-zn-accent) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, var(--color-zn-purple) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, var(--color-zn-gold) 0%, transparent 50%);
+  opacity: 0.18;
+  animation: ambient-shift 20s ease infinite;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@keyframes ambient-shift {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.1) rotate(5deg); }
 }
 
-::-webkit-scrollbar-track {
-  background: var(--color-background);
+/* === Gradient text utility === */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-zn-text), var(--color-zn-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+/* === Scrollbar === */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-zn-border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-zn-muted); }
+
+/* === Focus ring === */
+:focus-visible {
+  outline: 2px solid var(--color-zn-accent);
+  outline-offset: 2px;
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+/* === Skeleton shimmer === */
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 
-/* Focus styles */
-:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* === Card entrance animation === */
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-card-enter {
+  animation: card-enter 0.3s ease-out forwards;
+}
+
+/* === Fade in === */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+/* === Reduced motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .animate-card-enter,
+  .animate-fade-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .skeleton-shimmer::after {
+    animation: none;
+  }
+
+  .bg-ambient {
+    animation: none;
+  }
+}
+
+/* === Toast entrance === */
+@keyframes toast-enter {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-toast-enter {
+  animation: toast-enter 0.25s ease-out forwards;
 }

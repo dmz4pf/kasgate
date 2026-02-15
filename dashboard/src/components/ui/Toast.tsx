@@ -23,8 +23,14 @@ export function toast(type: Toast['type'], message: string) {
   setTimeout(() => {
     toasts = toasts.filter((t) => t.id !== id);
     notifyListeners();
-  }, 5000);
+  }, 4000);
 }
+
+const typeConfig = {
+  success: { icon: CheckCircle, bg: 'bg-zn-elevated border-zn-success/30', text: 'text-zn-success' },
+  error: { icon: AlertCircle, bg: 'bg-zn-elevated border-zn-error/30', text: 'text-zn-error' },
+  info: { icon: Info, bg: 'bg-zn-elevated border-zn-link/30', text: 'text-zn-link' },
+};
 
 export function ToastContainer() {
   const [currentToasts, setCurrentToasts] = useState<Toast[]>([]);
@@ -44,32 +50,26 @@ export function ToastContainer() {
   if (currentToasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-      {currentToasts.map((t) => (
-        <div
-          key={t.id}
-          className={cn(
-            'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg min-w-[300px]',
-            'animate-in slide-in-from-right-5 fade-in duration-200',
-            {
-              'bg-green-600': t.type === 'success',
-              'bg-red-600': t.type === 'error',
-              'bg-blue-600': t.type === 'info',
-            }
-          )}
-        >
-          {t.type === 'success' && <CheckCircle className="h-5 w-5 text-white" />}
-          {t.type === 'error' && <AlertCircle className="h-5 w-5 text-white" />}
-          {t.type === 'info' && <Info className="h-5 w-5 text-white" />}
-          <span className="flex-1 text-sm text-white">{t.message}</span>
-          <button
-            onClick={() => removeToast(t.id)}
-            className="text-white/80 hover:text-white"
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3">
+      {currentToasts.map((t) => {
+        const config = typeConfig[t.type];
+        const Icon = config.icon;
+        return (
+          <div
+            key={t.id}
+            className={cn(
+              'flex items-center gap-3 px-4 py-3 rounded-lg border min-w-[300px] shadow-lg shadow-black/20 animate-toast-enter',
+              config.bg
+            )}
           >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      ))}
+            <Icon className={cn('w-4 h-4 shrink-0', config.text)} />
+            <span className={cn('flex-1 text-sm', config.text)}>{t.message}</span>
+            <button onClick={() => removeToast(t.id)} className="text-zn-muted hover:text-zn-text">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

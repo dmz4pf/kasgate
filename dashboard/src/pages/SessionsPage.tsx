@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SessionTable } from '@/components/sessions/SessionTable';
 import { useSessions } from '@/hooks/useSessions';
+import { cn } from '@/lib/utils';
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'All Status' },
+  { value: '', label: 'All' },
   { value: 'pending', label: 'Pending' },
   { value: 'confirming', label: 'Confirming' },
   { value: 'confirmed', label: 'Confirmed' },
@@ -25,27 +25,29 @@ export function SessionsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#e5e7eb]">Payment Sessions</h1>
-        <p className="text-[#9ca3af] mt-1">View and manage your payment sessions</p>
-      </div>
-
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Sessions</CardTitle>
-          <select
-            value={status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className="bg-[#0A0F14] border border-[#2a3444] rounded-lg px-3 py-2 text-sm text-[#e5e7eb] focus:border-[#49EACB] focus:outline-none"
-          >
+    <div className="space-y-10">
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 pb-5">
+          <h2 className="text-sm font-semibold text-zn-text">All Payments</h2>
+          <div className="inline-flex gap-1 p-1 bg-zn-alt rounded-lg" role="tablist">
             {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+              <button
+                key={opt.value}
+                role="tab"
+                aria-selected={status === opt.value}
+                onClick={() => handleStatusChange(opt.value)}
+                className={cn(
+                  'px-3 py-1.5 rounded-md text-sm font-medium',
+                  status === opt.value
+                    ? 'bg-zn-accent/20 text-zn-accent'
+                    : 'text-zn-secondary hover:text-zn-text'
+                )}
+              >
                 {opt.label}
-              </option>
+              </button>
             ))}
-          </select>
-        </CardHeader>
+          </div>
+        </div>
         <SessionTable
           sessions={data?.sessions ?? []}
           isLoading={isLoading}
@@ -54,7 +56,7 @@ export function SessionsPage() {
           offset={offset}
           onPageChange={setOffset}
         />
-      </Card>
+      </div>
     </div>
   );
 }

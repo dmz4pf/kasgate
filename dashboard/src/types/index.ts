@@ -4,18 +4,17 @@ export type SessionStatus = 'pending' | 'confirming' | 'confirmed' | 'expired' |
 
 export interface Session {
   id: string;
-  merchantId: string;
   orderId: string;
+  address: string;
   amount: string;
-  currency: string;
-  kaspaAmount: string;
-  kaspaAddress: string;
+  amountSompi: string;
   status: SessionStatus;
+  confirmations: number;
+  txId?: string;
   expiresAt: string;
   createdAt: string;
-  updatedAt: string;
+  paidAt?: string;
   confirmedAt?: string;
-  txHash?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -28,21 +27,22 @@ export interface SessionsResponse {
 
 export interface Merchant {
   id: string;
+  name: string;
   email: string;
-  businessName: string;
   webhookUrl?: string;
-  apiKeyLastFour: string;
+  nextAddressIndex?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Stats {
   totalSessions: number;
   pendingSessions: number;
+  confirmingSessions: number;
   confirmedSessions: number;
-  totalKasReceived: string;
-  last24hSessions: number;
-  last24hConfirmed: number;
-  last24hKasReceived: string;
+  expiredSessions: number;
+  totalReceived: string;
+  totalReceivedSompi: string;
 }
 
 export interface ApiError {

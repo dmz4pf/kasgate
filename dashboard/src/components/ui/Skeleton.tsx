@@ -6,11 +6,6 @@ interface SkeletonProps {
 
 export function Skeleton({ className }: SkeletonProps) {
   return (
-    <div
-      className={cn(
-        'animate-pulse rounded-md bg-[#2a3444]',
-        className
-      )}
-    />
+    <div className={cn('rounded-md bg-zn-alt skeleton-shimmer', className)} />
   );
 }

@@ -11,20 +11,16 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, disabled, children, ...props }, ref) => {
     const variants = {
-      primary:
-        'bg-[#49EACB] text-[#0A0F14] hover:bg-[#3dd4b7] focus-visible:ring-[#49EACB]',
-      secondary:
-        'bg-[#151C28] text-[#e5e7eb] border border-[#2a3444] hover:bg-[#1c2535] focus-visible:ring-[#49EACB]',
-      ghost:
-        'text-[#9ca3af] hover:text-[#e5e7eb] hover:bg-[#151C28] focus-visible:ring-[#49EACB]',
-      danger:
-        'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+      primary: 'bg-zn-accent text-zn-bg hover:bg-zn-accent/80',
+      secondary: 'bg-zn-alt text-zn-text border border-zn-border hover:border-zn-border-strong hover:bg-zn-elevated',
+      ghost: 'bg-transparent text-zn-secondary hover:bg-zn-alt hover:text-zn-text',
+      danger: 'bg-zn-error/10 text-zn-error border border-zn-error/30 hover:bg-zn-error/20',
     };
 
     const sizes = {
-      sm: 'px-3 py-1.5 text-sm',
-      md: 'px-4 py-2 text-sm',
-      lg: 'px-6 py-3 text-base',
+      sm: 'h-8 px-3 text-sm',
+      md: 'h-9 px-4 text-sm',
+      lg: 'h-10 px-5 text-sm',
     };
 
     return (
@@ -32,9 +28,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || isLoading}
         className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F14]',
-          'disabled:pointer-events-none disabled:opacity-50',
+          'inline-flex items-center justify-center font-medium rounded-md gap-1.5 cursor-pointer transition-colors',
+          'disabled:opacity-50 disabled:pointer-events-none',
           variants[variant],
           sizes[size],
           className

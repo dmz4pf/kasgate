@@ -8,10 +8,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={cn(
-          'rounded-xl bg-[#151C28] border border-[#2a3444] p-6',
-          className
-        )}
+        className={cn('bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl p-7', className)}
         {...props}
       />
     );
@@ -20,12 +17,12 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
 
 Card.displayName = 'Card';
 
-const CardHeader = forwardRef<HTMLDivElement, CardProps>(
+const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     return (
       <div
         ref={ref}
-        className={cn('flex flex-col space-y-1.5 pb-4', className)}
+        className={cn('flex justify-between items-center mb-4', className)}
         {...props}
       />
     );
@@ -39,7 +36,7 @@ const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingEleme
     return (
       <h3
         ref={ref}
-        className={cn('text-lg font-semibold text-[#e5e7eb]', className)}
+        className={cn('text-sm font-semibold text-zn-text', className)}
         {...props}
       />
     );
@@ -53,7 +50,7 @@ const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLPara
     return (
       <p
         ref={ref}
-        className={cn('text-sm text-[#9ca3af]', className)}
+        className={cn('text-sm text-zn-secondary', className)}
         {...props}
       />
     );
@@ -62,7 +59,7 @@ const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLPara
 
 CardDescription.displayName = 'CardDescription';
 
-const CardContent = forwardRef<HTMLDivElement, CardProps>(
+const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     return <div ref={ref} className={cn('', className)} {...props} />;
   }

@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileX } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatKas, formatDateTime, truncateAddress } from '@/lib/utils';
+import { formatKas, formatDateTime, truncateAddress, cn } from '@/lib/utils';
 import type { Session } from '@/types';
 
 interface SessionTableProps {
@@ -30,10 +30,16 @@ export function SessionTable({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3 p-4">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="p-4 border border-[#2a3444] rounded-lg">
-            <Skeleton className="h-5 w-full" />
+          <div key={i} className="p-4 rounded-lg bg-zn-alt">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-5 w-32 hidden md:block" />
+              <Skeleton className="h-5 w-28 hidden md:block" />
+              <Skeleton className="h-5 w-20 ml-auto" />
+            </div>
           </div>
         ))}
       </div>
@@ -42,111 +48,94 @@ export function SessionTable({
 
   if (sessions.length === 0) {
     return (
-      <div className="text-center py-12 text-[#9ca3af]">
-        No sessions found
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="w-16 h-16 rounded-lg bg-zn-alt flex items-center justify-center mb-4">
+          <FileX className="h-8 w-8 text-zn-muted" />
+        </div>
+        <p className="text-zn-text font-medium text-lg mb-1">No payments found</p>
+        <p className="text-zn-secondary text-sm text-center">
+          Payments will show up here when customers start checking out
+        </p>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Desktop Table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-[#2a3444]">
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#9ca3af]">
-                Order ID
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#9ca3af]">
-                Status
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#9ca3af]">
-                Amount
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#9ca3af]">
-                Address
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#9ca3af]">
-                Created
-              </th>
+            <tr className="border-b border-zn-border bg-zn-surface/50">
+              <th className="text-left h-10 px-5 text-[11px] font-medium text-zn-muted uppercase tracking-[0.05em]">Order ID</th>
+              <th className="text-left h-10 px-5 text-[11px] font-medium text-zn-muted uppercase tracking-[0.05em]">Status</th>
+              <th className="text-left h-10 px-5 text-[11px] font-medium text-zn-muted uppercase tracking-[0.05em]">Amount</th>
+              <th className="text-left h-10 px-5 text-[11px] font-medium text-zn-muted uppercase tracking-[0.05em]">Address</th>
+              <th className="text-left h-10 px-5 text-[11px] font-medium text-zn-muted uppercase tracking-[0.05em]">Created</th>
             </tr>
           </thead>
           <tbody>
-            {sessions.map((session) => (
+            {sessions.map((session, idx) => (
               <tr
                 key={session.id}
-                className="border-b border-[#2a3444] hover:bg-[#1c2535] transition-colors"
+                className={cn(
+                  'h-[52px] hover:bg-zn-accent/[0.03] transition-colors',
+                  idx < sessions.length - 1 && 'border-b border-zn-border'
+                )}
               >
-                <td className="py-3 px-4">
-                  <Link
-                    to={`/dashboard/sessions/${session.id}`}
-                    className="text-[#49EACB] hover:underline font-medium"
-                  >
+                <td className="px-5">
+                  <Link to={`/sessions/${session.id}`} className="text-zn-link hover:text-zn-link font-medium font-mono">
                     {session.orderId}
                   </Link>
                 </td>
-                <td className="py-3 px-4">
-                  <StatusBadge status={session.status} />
+                <td className="px-5"><StatusBadge status={session.status} /></td>
+                <td className="px-5 text-zn-text font-medium font-mono">{formatKas(session.amount)}</td>
+                <td className="px-5">
+                  <span className="font-mono text-sm bg-zn-alt text-zn-secondary px-2 py-1 rounded">
+                    {truncateAddress(session.address)}
+                  </span>
                 </td>
-                <td className="py-3 px-4 text-[#e5e7eb]">
-                  {formatKas(session.kaspaAmount)}
-                </td>
-                <td className="py-3 px-4 font-mono text-sm text-[#9ca3af]">
-                  {truncateAddress(session.kaspaAddress)}
-                </td>
-                <td className="py-3 px-4 text-sm text-[#9ca3af]">
-                  {formatDateTime(session.createdAt)}
-                </td>
+                <td className="px-5 text-xs text-zn-secondary">{formatDateTime(session.createdAt)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* Mobile Cards */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden space-y-3 p-4">
         {sessions.map((session) => (
           <Link
             key={session.id}
-            to={`/dashboard/sessions/${session.id}`}
-            className="block p-4 border border-[#2a3444] rounded-lg hover:bg-[#1c2535] transition-colors"
+            to={`/sessions/${session.id}`}
+            className="block p-4 rounded-lg bg-zn-alt border border-zn-border hover:border-zn-border-strong"
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-[#49EACB]">{session.orderId}</span>
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-medium text-zn-link">{session.orderId}</span>
               <StatusBadge status={session.status} />
             </div>
-            <div className="text-sm text-[#9ca3af]">
-              {formatKas(session.kaspaAmount)} • {formatDateTime(session.createdAt)}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-zn-text font-medium">{formatKas(session.amount)}</span>
+              <span className="text-zn-secondary">{formatDateTime(session.createdAt)}</span>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#2a3444]">
-          <span className="text-sm text-[#9ca3af]">
-            Showing {offset + 1}-{Math.min(offset + limit, total)} of {total}
+        <div className="flex items-center justify-between px-5 py-3 border-t border-zn-border">
+          <span className="text-sm text-zn-secondary">
+            Showing <span className="text-zn-text font-medium">{offset + 1}</span>-
+            <span className="text-zn-text font-medium">{Math.min(offset + limit, total)}</span> of{' '}
+            <span className="text-zn-text font-medium">{total}</span>
           </span>
           <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => onPageChange(Math.max(0, offset - limit))}
-              disabled={!hasPrev}
-            >
+            <Button variant="secondary" size="sm" onClick={() => onPageChange(Math.max(0, offset - limit))} disabled={!hasPrev}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-[#9ca3af]">
-              Page {currentPage} of {totalPages}
+            <span className="text-sm text-zn-secondary px-3">
+              Page <span className="text-zn-text font-medium">{currentPage}</span> of{' '}
+              <span className="text-zn-text font-medium">{totalPages}</span>
             </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => onPageChange(offset + limit)}
-              disabled={!hasNext}
-            >
+            <Button variant="secondary" size="sm" onClick={() => onPageChange(offset + limit)} disabled={!hasNext}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

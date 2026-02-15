@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
+import { ArrowRight, Clock } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatKas, formatRelativeTime, truncateAddress } from '@/lib/utils';
 import type { Session } from '@/types';
@@ -11,31 +10,30 @@ interface SessionCardProps {
 
 export function SessionCard({ session }: SessionCardProps) {
   return (
-    <Link to={`/dashboard/sessions/${session.id}`}>
-      <Card className="hover:bg-[#1c2535] transition-colors cursor-pointer">
+    <Link to={`/sessions/${session.id}`}>
+      <div className="bg-zn-surface/70 backdrop-blur-xl border border-zn-border rounded-2xl p-4 hover:border-zn-accent/30 transition-colors">
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-3">
               <StatusBadge status={session.status} />
-              <span className="text-sm text-[#9ca3af]">
+              <span className="text-xs text-zn-muted flex items-center gap-1">
+                <Clock className="h-3 w-3" />
                 {formatRelativeTime(session.createdAt)}
               </span>
             </div>
-            <p className="text-[#e5e7eb] font-medium truncate">
-              Order: {session.orderId}
-            </p>
-            <p className="text-sm text-[#9ca3af] mt-1">
-              {formatKas(session.kaspaAmount)}
-            </p>
+            <p className="text-zn-text font-semibold truncate mb-1">{session.orderId}</p>
+            <p className="text-sm text-zn-link font-medium">{formatKas(session.amount)}</p>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-[#9ca3af] font-mono">
-              {truncateAddress(session.kaspaAddress, 6)}
+          <div className="text-right flex flex-col items-end gap-2">
+            <p className="text-xs font-mono bg-zn-alt text-zn-secondary px-2 py-1 rounded">
+              {truncateAddress(session.address, 6)}
             </p>
-            <ArrowRight className="h-4 w-4 text-[#9ca3af] ml-auto mt-2" />
+            <div className="w-8 h-8 rounded-md flex items-center justify-center bg-zn-alt text-zn-muted">
+              <ArrowRight className="h-4 w-4" />
+            </div>
           </div>
         </div>
-      </Card>
+      </div>
     </Link>
   );
 }
