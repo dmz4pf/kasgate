@@ -57,15 +57,10 @@ RUN apk del python3 make g++
 # Copy built assets from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Create data directory
-RUN mkdir -p /app/data && chown -R node:node /app/data
-
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=3001
-
-# Switch to non-root user
-USER node
+ENV HOST=0.0.0.0
 
 # Expose port
 EXPOSE 3001
@@ -74,5 +69,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget -qO- http://localhost:3001/health || exit 1
 
-# Start server
-CMD ["node", "dist/server/index.js"]
+# Ensure data dir exists and start server
+CMD ["sh", "-c", "mkdir -p /app/data && node dist/server/index.js"]
