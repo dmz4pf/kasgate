@@ -9,7 +9,6 @@
 // ============================================================
 
 interface KaswareProvider {
-  isKasware: boolean;
   requestAccounts: () => Promise<string[]>;
   getBalance: () => Promise<{ confirmed: number; unconfirmed: number; total: number }>;
   sendKaspa: (toAddress: string, amount: number) => Promise<string>;
@@ -32,7 +31,7 @@ declare global {
  * Check if Kasware is installed
  */
 export function isKaswareInstalled(): boolean {
-  return typeof window !== 'undefined' && !!window.kasware?.isKasware;
+  return typeof window !== 'undefined' && typeof window.kasware !== 'undefined';
 }
 
 /**
