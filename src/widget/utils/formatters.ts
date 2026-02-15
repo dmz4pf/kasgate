@@ -18,16 +18,21 @@ export function formatTimeRemaining(ms: number): string {
 /**
  * Format KAS amount for display (converts sompi to KAS)
  * 1 KAS = 100,000,000 sompi (10^8)
+ * Uses BigInt to avoid floating-point precision issues
  */
 export function formatKasAmount(sompi: string): string {
-  const num = parseFloat(sompi);
-  if (isNaN(num)) return sompi;
+  if (!sompi || sompi === '0') return '0';
+  const clean = sompi.replace(/[^0-9]/g, '');
+  if (!clean) return sompi;
 
-  // Convert sompi to KAS
-  const kas = num / 100_000_000;
+  const total = BigInt(clean);
+  const SOMPI_PER_KAS = BigInt(100_000_000);
+  const whole = total / SOMPI_PER_KAS;
+  const remainder = total % SOMPI_PER_KAS;
 
-  // Format with appropriate decimal places, remove trailing zeros
-  return kas.toFixed(8).replace(/\.?0+$/, '');
+  if (remainder === 0n) return whole.toString();
+  const decimal = remainder.toString().padStart(8, '0').replace(/0+$/, '');
+  return `${whole}.${decimal}`;
 }
 
 /**
