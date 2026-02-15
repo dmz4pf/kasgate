@@ -172,7 +172,9 @@ export function createApp(): express.Application {
 
   // API v1 with rate limiting (Bug #8 fix) and restricted CORS (Bug #16 fix)
   app.use('/api/v1/sessions', cors(apiCorsOptions), sessionCreationLimiter, sessionRoutes);
-  app.use('/api/v1/merchants', cors(apiCorsOptions), merchantCreationLimiter, merchantRoutes);
+  // Apply merchant creation rate limit only to POST /api/v1/merchants (registration)
+  app.post('/api/v1/merchants', cors(apiCorsOptions), merchantCreationLimiter);
+  app.use('/api/v1/merchants', cors(apiCorsOptions), merchantRoutes);
 
   // ============================================================
   // ERROR HANDLING

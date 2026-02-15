@@ -23,6 +23,7 @@ interface MonitoredAddress {
   expectedAmount: bigint;
   callback: PaymentCallback;
   useRpc: boolean;
+  detected: boolean; // Guard against double-detection from RPC + REST
 }
 
 // ============================================================
@@ -69,23 +70,21 @@ export class PaymentMonitor {
       expectedAmount,
       callback,
       useRpc,
+      detected: false,
     });
 
     console.log(`[KasGate] Monitoring ${address.slice(0, 20)}... (RPC: ${useRpc})`);
 
+    // Always start REST polling as a reliable baseline
+    this.startRestPolling(address);
+
     if (useRpc) {
       try {
         await this.rpcManager.subscribeAddress(address);
-
-        // Bug #1 fix: Populate scriptToAddress map for fallback matching
-        // Fetch existing UTXOs to learn the scriptPublicKey for this address
         this.populateScriptMapping(address);
       } catch (error) {
-        console.error('[KasGate] RPC subscription failed, falling back to REST:', error);
-        await this.switchToRest(address);
+        console.error('[KasGate] RPC subscription failed (REST already active):', error);
       }
-    } else {
-      this.startRestPolling(address);
     }
   }
 
@@ -121,7 +120,7 @@ export class PaymentMonitor {
 
     this.monitoredAddresses.delete(address);
 
-    // Bug #1 fix: Clean up scriptToAddress mapping
+    // Clean up scriptToAddress mapping
     for (const [script, addr] of this.scriptToAddress) {
       if (addr === address) {
         this.scriptToAddress.delete(script);
@@ -129,11 +128,11 @@ export class PaymentMonitor {
       }
     }
 
+    // Always clean up both RPC and REST (since both may be active)
     if (monitored.useRpc) {
       await this.rpcManager.unsubscribeAddress(address);
-    } else {
-      this.restPoller.unwatch(address);
     }
+    this.restPoller.unwatch(address);
 
     console.log(`[KasGate] Stopped monitoring ${address.slice(0, 20)}...`);
   }
@@ -261,10 +260,12 @@ export class PaymentMonitor {
     const totalAmount = confirmedUtxos.reduce((sum, u) => sum + u.amount, 0n);
 
     if (totalAmount >= monitored.expectedAmount) {
-      // Get the first UTXO's transaction ID
-      const txId = confirmedUtxos[0].transactionId;
+      // Guard against double-detection (both RPC and REST may fire)
+      if (monitored.detected) return;
+      monitored.detected = true;
 
-      console.log(`[KasGate] Payment detected for ${address.slice(0, 20)}: ${totalAmount} sompi`);
+      const txId = confirmedUtxos[0].transactionId;
+      console.log(`[KasGate] Payment detected for ${address.slice(0, 20)}: ${totalAmount} sompi (tx: ${txId.slice(0, 12)}...)`);
 
       monitored.callback.onPaymentDetected(address, txId, totalAmount, confirmedUtxos);
     }

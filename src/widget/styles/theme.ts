@@ -16,24 +16,27 @@ export const COLORS = {
     800: '#209C86',
     900: '#14806E',
   },
-  // Neutral
+  // Luxe navy neutrals (matches dashboard @theme)
   gray: {
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280',
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
+    50: '#f8fafc',
+    100: '#f1f5f9',
+    200: '#e2e8f0',
+    300: '#cbd5e1',
+    400: '#94a3b8',
+    500: '#64748b',
+    600: '#475569',
+    700: '#1e2536',
+    800: '#1a1f2e',
+    900: '#0f1419',
   },
   // Semantic
-  success: '#10B981',
+  success: '#22c55e',
   warning: '#F59E0B',
   error: '#EF4444',
   info: '#3B82F6',
+  // Accent
+  purple: '#a78bfa',
+  gold: '#fbbf24',
   // Background
   white: '#FFFFFF',
   black: '#000000',
@@ -123,21 +126,27 @@ export function getCSSVariables(theme: 'light' | 'dark'): string {
     --kg-bg-secondary: ${isDark ? COLORS.gray[800] : COLORS.gray[50]};
     --kg-bg-tertiary: ${isDark ? COLORS.gray[700] : COLORS.gray[100]};
 
-    --kg-text: ${isDark ? COLORS.gray[100] : COLORS.gray[900]};
+    --kg-text: ${isDark ? COLORS.gray[50] : COLORS.gray[900]};
     --kg-text-secondary: ${isDark ? COLORS.gray[400] : COLORS.gray[500]};
-    --kg-text-muted: ${isDark ? COLORS.gray[500] : COLORS.gray[400]};
+    --kg-text-muted: ${isDark ? COLORS.gray[600] : COLORS.gray[400]};
 
-    --kg-border: ${isDark ? COLORS.gray[700] : COLORS.gray[200]};
-    --kg-border-focus: ${COLORS.primary[500]};
+    --kg-border: ${isDark ? '#253245' : COLORS.gray[200]};
+    --kg-border-focus: ${isDark ? '#334766' : COLORS.primary[500]};
 
     --kg-success: ${COLORS.success};
     --kg-warning: ${COLORS.warning};
     --kg-error: ${COLORS.error};
     --kg-info: ${COLORS.info};
 
+    --kg-purple: ${COLORS.purple};
+    --kg-gold: ${COLORS.gold};
+    --kg-glass: ${isDark ? 'rgba(15, 20, 25, 0.7)' : 'rgba(255, 255, 255, 0.85)'};
+    --kg-glass-border: ${isDark ? 'rgba(37, 50, 69, 0.8)' : 'rgba(0, 0, 0, 0.08)'};
+
     --kg-shadow: ${isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.1)'};
 
     --kg-font-family: ${TYPOGRAPHY.fontFamily};
+    --kg-font-size-xs: ${TYPOGRAPHY.fontSize.xs};
     --kg-font-size-sm: ${TYPOGRAPHY.fontSize.sm};
     --kg-font-size-base: ${TYPOGRAPHY.fontSize.base};
     --kg-font-size-lg: ${TYPOGRAPHY.fontSize.lg};
@@ -146,6 +155,7 @@ export function getCSSVariables(theme: 'light' | 'dark'): string {
 
     --kg-radius: ${BORDERS.radius.md};
     --kg-radius-lg: ${BORDERS.radius.lg};
+    --kg-radius-xl: ${BORDERS.radius.xl};
 
     --kg-spacing-xs: ${SPACING.xs};
     --kg-spacing-sm: ${SPACING.sm};
