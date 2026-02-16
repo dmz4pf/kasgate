@@ -13,6 +13,7 @@ export interface SessionResponse {
   txId?: string;
   orderId?: string;
   qrCode: string;
+  subscriptionToken: string;
   createdAt: string;
   expiresAt: string;
   paidAt?: string;

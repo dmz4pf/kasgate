@@ -1,5 +1,7 @@
 /**
  * Widget WebSocket Client
+ *
+ * Uses native WebSocket to connect to the KasGate server's /ws endpoint.
  */
 
 export interface StatusUpdate {
@@ -32,6 +34,7 @@ export class SocketClient {
   private socket: WebSocket | null = null;
   private serverUrl: string;
   private sessionId: string | null = null;
+  private subscriptionToken: string | null = null;
   private handlers: SocketEventHandler = {};
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -61,8 +64,8 @@ export class SocketClient {
         this.handlers.onConnect?.();
 
         // Resubscribe if we had a session
-        if (this.sessionId) {
-          this.subscribe(this.sessionId);
+        if (this.sessionId && this.subscriptionToken) {
+          this.subscribe(this.sessionId, this.subscriptionToken);
         }
       };
 
@@ -103,13 +106,15 @@ export class SocketClient {
     }
 
     this.sessionId = null;
+    this.subscriptionToken = null;
   }
 
-  subscribe(sessionId: string): void {
+  subscribe(sessionId: string, token: string): void {
     this.sessionId = sessionId;
+    this.subscriptionToken = token;
 
     if (this.socket?.readyState === WebSocket.OPEN) {
-      this.send({ type: 'subscribe', sessionId });
+      this.send({ type: 'subscribe', sessionId, token });
     }
   }
 
@@ -120,6 +125,7 @@ export class SocketClient {
 
     if (this.sessionId === sessionId) {
       this.sessionId = null;
+      this.subscriptionToken = null;
     }
   }
 

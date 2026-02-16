@@ -146,7 +146,7 @@ export class KasGateElement extends HTMLElement {
         onError: (error) => console.error('[KasGate Widget] Socket error:', error),
       });
       this.socket.connect();
-      this.socket.subscribe(this.session.id);
+      this.socket.subscribe(this.session.id, this.session.subscriptionToken);
 
       this.startTimer();
       this.startPolling();
