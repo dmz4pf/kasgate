@@ -73,6 +73,10 @@ KasGate is the Stripe of Kaspa. Register as a merchant, get an API key, and star
 
 Visit the [dashboard](https://kasgate-production.up.railway.app/dashboard/register) and create an account with your Kaspa xPub key.
 
+To get your xPub key, use either:
+- **[Kaspa-NG](https://kaspa-ng.org)** — desktop/web wallet, find xPub under wallet settings
+- **[KasWare](https://kasware.xyz)** — browser extension wallet, export xPub from account details
+
 ### 2. Create a payment
 
 ```javascript
