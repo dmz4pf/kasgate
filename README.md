@@ -2,8 +2,8 @@
 
 Accept Kaspa cryptocurrency payments on any website with a single API call.
 
-[![CI](https://github.com/dmz4pf/kasgate/actions/workflows/ci.yml/badge.svg)](https://github.com/dmz4pf/kasgate/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-71%20passing-brightgreen)](https://github.com/dmz4pf/kasgate/actions)
+[![CI](https://github.com/dmustapha/kasgate/actions/workflows/ci.yml/badge.svg)](https://github.com/dmustapha/kasgate/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-71%20passing-brightgreen)](https://github.com/dmustapha/kasgate/actions)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -149,7 +149,7 @@ All endpoints require `X-API-Key` header.
 ## Running Locally
 
 ```bash
-git clone https://github.com/dmz4pf/kasgate.git
+git clone https://github.com/dmustapha/kasgate.git
 cd kasgate
 bun install
 cp .env.example .env
