@@ -69,24 +69,53 @@ KasGate is the Stripe of Kaspa. Register as a merchant, get an API key, and star
 
 ## Testing the Full Flow
 
-Here's how to go from zero to receiving a confirmed payment end-to-end.
+Here's how to go from zero to a confirmed payment, end-to-end. No real KAS needed — KasGate runs on Kaspa testnet-10.
 
-**Step 1: Get a Kaspa xPub key**
+---
 
-You need a Kaspa wallet that exposes your xPub (extended public key). Use either:
-- **[Kaspa-NG](https://kaspa-ng.org)** — open your wallet, go to Settings → Export xPub
-- **[KasWare](https://kasware.xyz)** — browser extension, go to Account Details → Export xPub
+### Part 1: Setup (one time)
 
-**Step 2: Register as a merchant**
+**1. Get a Kaspa wallet and export your xPub key**
 
-Go to [kasgate-production.up.railway.app/dashboard/register](https://kasgate-production.up.railway.app/dashboard/register), enter your xPub key and create your account. Your API key will be shown on the dashboard.
+You need a Kaspa wallet that lets you export your xPub (extended public key). This is how KasGate generates a unique deposit address per payment without storing your private key.
 
-**Step 3: Create a payment session**
+Option A — **[Kaspa-NG](https://kaspa-ng.org)** (desktop/web):
+- Create a wallet and switch to testnet-10 in settings
+- Go to Wallet → Settings → Export xPub
+- Copy the key starting with `xpub...`
+
+Option B — **[KasWare](https://kasware.xyz)** (browser extension):
+- Install the extension and create a wallet
+- Switch network to testnet-10
+- Go to Account Details → Export xPub
+
+**2. Get testnet KAS from the faucet**
+
+Go to **[faucet.kaspanet.io](https://faucet.kaspanet.io)** and paste your testnet address (starts with `kaspatest:`) to receive free test KAS.
+
+> Testnet addresses start with `kaspatest:` not `kaspa:` — make sure your wallet is on testnet-10 before copying the address.
+
+**3. Register as a merchant**
+
+Go to [kasgate-production.up.railway.app/dashboard/register](https://kasgate-production.up.railway.app/dashboard/register):
+- Enter your name and email
+- Paste your xPub key
+- Submit — your account is created and your API key is shown on the dashboard
+
+Keep your API key safe. You can regenerate it from the dashboard if needed.
+
+---
+
+### Part 2: Test a payment from the terminal
+
+This is the fastest way to see the full flow without building a frontend.
+
+**1. Create a payment session**
 
 ```bash
 curl -X POST https://kasgate-production.up.railway.app/api/v1/sessions \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key" \
+  -H "X-API-Key: YOUR_API_KEY" \
   -d '{"amount": "1", "orderId": "test_001"}'
 ```
 
@@ -94,30 +123,112 @@ Response:
 ```json
 {
   "id": "sess_abc123",
-  "address": "kaspa:qr...",
+  "address": "kaspatest:qr...",
   "amount": "1",
-  "status": "pending"
+  "status": "pending",
+  "expiresAt": "2024-01-01T12:10:00Z"
 }
 ```
 
-**Step 4: Send KAS to the generated address**
+**2. Send KAS to the generated address**
 
-Open Kaspa-NG or KasWare and send the exact amount to the `address` from the response. Use testnet-10 for testing — no real KAS needed.
+Open Kaspa-NG or KasWare, send exactly `1 KAS` (testnet) to the `address` from the response. The address is unique to this payment session.
 
-**Step 5: Watch the session confirm**
-
-Poll the session status or check the dashboard:
+**3. Poll for confirmation**
 
 ```bash
 curl https://kasgate-production.up.railway.app/api/v1/sessions/sess_abc123 \
-  -H "X-API-Key: your_api_key"
+  -H "X-API-Key: YOUR_API_KEY"
 ```
 
-Status will move from `pending` → `confirmed` once the blockchain picks it up.
+Run this every 10–15 seconds. Status moves from `pending` → `confirmed` once the transaction is picked up on-chain. Testnet-10 confirms in under a minute.
 
-**Step 6: Webhook fires**
+**4. Check the dashboard**
 
-If you registered a webhook URL, KasGate sends a signed POST to your server with the confirmation. Check **Webhook Logs** on the dashboard to see delivery attempts and responses.
+Open the [dashboard](https://kasgate-production.up.railway.app/dashboard) — you'll see the session appear under **Sessions** with its status updating in real time.
+
+---
+
+### Part 3: Integrate into your app
+
+**Option A — REST API**
+
+Add payment creation to your backend:
+
+```javascript
+// Create a payment session when a user checks out
+const response = await fetch('https://kasgate-production.up.railway.app/api/v1/sessions', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': process.env.KASGATE_API_KEY
+  },
+  body: JSON.stringify({
+    amount: '10.5',         // Amount in KAS
+    orderId: 'order_123'    // Your internal order ID
+  })
+});
+
+const session = await response.json();
+
+// Show session.address to your user — they send payment here
+// Store session.id to poll status or match with webhook
+```
+
+Listen for payment confirmation via webhook:
+
+```javascript
+app.post('/webhook/kaspa', express.raw({ type: 'application/json' }), (req, res) => {
+  // Verify the signature
+  const signature = req.headers['x-kasgate-signature'];
+  const expected = crypto
+    .createHmac('sha256', process.env.KASGATE_WEBHOOK_SECRET)
+    .update(req.body)
+    .digest('hex');
+
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  const { event, sessionId, txId, amount } = JSON.parse(req.body);
+
+  if (event === 'payment.confirmed') {
+    // Payment received — fulfill the order
+    console.log(`Order fulfilled. TX: ${txId}, Amount: ${amount} KAS`);
+    fulfillOrder(sessionId);
+  }
+
+  res.status(200).send('OK');
+});
+```
+
+Register your webhook URL from the dashboard under **Settings → Webhook**.
+
+**Option B — Drop-in widget (no backend needed)**
+
+Add a payment button to any webpage in 3 lines:
+
+```html
+<script src="https://kasgate-production.up.railway.app/widget/kasgate.js"></script>
+<kas-gate
+  api-key="your_api_key"
+  amount="10.5"
+  order-id="order_123"
+  theme="dark"
+></kas-gate>
+```
+
+The widget handles the full payment UI — shows the address, QR code, and confirms when payment arrives.
+
+---
+
+### Checking webhook delivery
+
+Every webhook attempt is logged. Go to **Dashboard → Webhook Logs** to see:
+- Which events fired
+- The payload sent
+- Your server's response code
+- Failed deliveries (KasGate retries automatically)
 
 ---
 
