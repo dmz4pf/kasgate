@@ -15,6 +15,10 @@
 
 Create a free account to explore the full dashboard.
 
+## Demo Video
+
+[![KasGate Demo](https://img.youtube.com/vi/vmAQz18icq4/maxresdefault.jpg)](https://youtu.be/vmAQz18icq4?si=dvoD1WaTgFEod8jf)
+
 ---
 
 ## What Is KasGate?

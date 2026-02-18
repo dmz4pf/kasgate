@@ -175,8 +175,8 @@ export function RegisterPage() {
       <div className="w-full max-w-[400px] relative z-[1]">
         <div className="bg-zn-surface/70 backdrop-blur-xl rounded-2xl border border-zn-border p-10">
           <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 rounded-[10px] bg-gradient-to-br from-zn-accent to-zn-purple flex items-center justify-center mb-6 shadow-lg shadow-zn-accent/20">
-              <span className="text-zn-bg font-bold text-base">K</span>
+            <div className="w-10 h-10 rounded-[10px] overflow-hidden mb-6 shadow-lg shadow-zn-accent/20">
+              <img src="/logo.png" alt="KasGate" className="w-full h-full object-cover" />
             </div>
             <h2 className="text-xl font-semibold text-gradient mb-1">Create Merchant Account</h2>
             <p className="text-sm text-zn-secondary mb-6">Register to start accepting Kaspa payments</p>

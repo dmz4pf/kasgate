@@ -68,8 +68,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Logo */}
         <div className="flex items-center gap-3 mb-10 px-2 py-2">
-          <div className="w-10 h-10 rounded-[10px] bg-gradient-to-br from-zn-accent to-zn-purple flex items-center justify-center shadow-lg shadow-zn-accent/20">
-            <span className="text-zn-bg font-bold text-lg">K</span>
+          <div className="w-10 h-10 rounded-[10px] overflow-hidden shadow-lg shadow-zn-accent/20">
+            <img src="/logo.png" alt="KasGate" className="w-full h-full object-cover" />
           </div>
           <span className="text-xl font-semibold text-gradient tracking-tight">KasGate</span>
         </div>
