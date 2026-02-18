@@ -69,7 +69,7 @@ KasGate is the Stripe of Kaspa. Register as a merchant, get an API key, and star
 
 ## Testing the Full Flow
 
-Here's how to go from zero to a confirmed payment, end-to-end. No real KAS needed — KasGate runs on Kaspa testnet-10.
+No real KAS needed. KasGate runs on Kaspa testnet-10 so you can test the entire payment flow for free.
 
 ---
 
@@ -79,28 +79,28 @@ Here's how to go from zero to a confirmed payment, end-to-end. No real KAS neede
 
 You need a Kaspa wallet that lets you export your xPub (extended public key). This is how KasGate generates a unique deposit address per payment without storing your private key.
 
-Option A — **[Kaspa-NG](https://kaspa-ng.org)** (desktop/web):
+**[Kaspa-NG](https://kaspa-ng.org)** (desktop/web):
 - Create a wallet and switch to testnet-10 in settings
-- Go to Wallet → Settings → Export xPub
+- Go to Wallet > Settings > Export xPub
 - Copy the key starting with `xpub...`
 
-Option B — **[KasWare](https://kasware.xyz)** (browser extension):
+**[KasWare](https://kasware.xyz)** (browser extension):
 - Install the extension and create a wallet
 - Switch network to testnet-10
-- Go to Account Details → Export xPub
+- Go to Account Details > Export xPub
 
 **2. Get testnet KAS from the faucet**
 
-Go to **[faucet.kaspanet.io](https://faucet.kaspanet.io)** and paste your testnet address (starts with `kaspatest:`) to receive free test KAS.
+Go to **[faucet.kaspanet.io](https://faucet.kaspanet.io)** and paste your testnet address to receive free test KAS.
 
-> Testnet addresses start with `kaspatest:` not `kaspa:` — make sure your wallet is on testnet-10 before copying the address.
+Note: testnet addresses start with `kaspatest:` not `kaspa:`. Make sure your wallet is on testnet-10 before copying the address.
 
 **3. Register as a merchant**
 
 Go to [kasgate-production.up.railway.app/dashboard/register](https://kasgate-production.up.railway.app/dashboard/register):
 - Enter your name and email
 - Paste your xPub key
-- Submit — your account is created and your API key is shown on the dashboard
+- Submit. Your account is created and your API key is shown on the dashboard
 
 Keep your API key safe. You can regenerate it from the dashboard if needed.
 
@@ -108,7 +108,7 @@ Keep your API key safe. You can regenerate it from the dashboard if needed.
 
 ### Part 2: Test a payment from the terminal
 
-This is the fastest way to see the full flow without building a frontend.
+The fastest way to verify the full flow without building a frontend.
 
 **1. Create a payment session**
 
@@ -141,17 +141,17 @@ curl https://kasgate-production.up.railway.app/api/v1/sessions/sess_abc123 \
   -H "X-API-Key: YOUR_API_KEY"
 ```
 
-Run this every 10–15 seconds. Status moves from `pending` → `confirmed` once the transaction is picked up on-chain. Testnet-10 confirms in under a minute.
+Run this every 10-15 seconds. Status moves from `pending` to `confirmed` once the transaction is picked up on-chain. Testnet-10 confirms in under a minute.
 
 **4. Check the dashboard**
 
-Open the [dashboard](https://kasgate-production.up.railway.app/dashboard) — you'll see the session appear under **Sessions** with its status updating in real time.
+Open the [dashboard](https://kasgate-production.up.railway.app/dashboard). The session appears under **Sessions** with its status updating in real time.
 
 ---
 
 ### Part 3: Integrate into your app
 
-**Option A — REST API**
+**REST API**
 
 Add payment creation to your backend:
 
@@ -170,16 +170,14 @@ const response = await fetch('https://kasgate-production.up.railway.app/api/v1/s
 });
 
 const session = await response.json();
-
-// Show session.address to your user — they send payment here
-// Store session.id to poll status or match with webhook
+// Show session.address to your user. They send payment here.
+// Store session.id to poll status or match with webhook.
 ```
 
 Listen for payment confirmation via webhook:
 
 ```javascript
 app.post('/webhook/kaspa', express.raw({ type: 'application/json' }), (req, res) => {
-  // Verify the signature
   const signature = req.headers['x-kasgate-signature'];
   const expected = crypto
     .createHmac('sha256', process.env.KASGATE_WEBHOOK_SECRET)
@@ -193,8 +191,6 @@ app.post('/webhook/kaspa', express.raw({ type: 'application/json' }), (req, res)
   const { event, sessionId, txId, amount } = JSON.parse(req.body);
 
   if (event === 'payment.confirmed') {
-    // Payment received — fulfill the order
-    console.log(`Order fulfilled. TX: ${txId}, Amount: ${amount} KAS`);
     fulfillOrder(sessionId);
   }
 
@@ -202,9 +198,9 @@ app.post('/webhook/kaspa', express.raw({ type: 'application/json' }), (req, res)
 });
 ```
 
-Register your webhook URL from the dashboard under **Settings → Webhook**.
+Register your webhook URL from the dashboard under **Settings > Webhook**.
 
-**Option B — Drop-in widget (no backend needed)**
+**Drop-in widget (no backend needed)**
 
 Add a payment button to any webpage in 3 lines:
 
@@ -218,83 +214,13 @@ Add a payment button to any webpage in 3 lines:
 ></kas-gate>
 ```
 
-The widget handles the full payment UI — shows the address, QR code, and confirms when payment arrives.
+The widget shows the address, QR code, and confirms when payment arrives.
 
 ---
 
 ### Checking webhook delivery
 
-Every webhook attempt is logged. Go to **Dashboard → Webhook Logs** to see:
-- Which events fired
-- The payload sent
-- Your server's response code
-- Failed deliveries (KasGate retries automatically)
-
----
-
-## Quick Start
-
-### 1. Register as a merchant
-
-Visit the [dashboard](https://kasgate-production.up.railway.app/dashboard/register) and create an account with your Kaspa xPub key.
-
-To get your xPub key, use either:
-- **[Kaspa-NG](https://kaspa-ng.org)** — desktop/web wallet, find xPub under wallet settings
-- **[KasWare](https://kasware.xyz)** — browser extension wallet, export xPub from account details
-
-### 2. Create a payment
-
-```javascript
-const response = await fetch('https://kasgate-production.up.railway.app/api/v1/sessions', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'your_api_key'
-  },
-  body: JSON.stringify({
-    amount: '10.5',
-    orderId: 'order_123'
-  })
-});
-
-const session = await response.json();
-console.log(session.address); // kaspa:qr... — send payment here
-console.log(session.id);      // sess_abc123 — track status
-```
-
-### 3. Receive payment confirmation
-
-```javascript
-app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
-  const signature = req.headers['x-kasgate-signature'];
-  const expected = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET)
-    .update(req.body).digest('hex');
-
-  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
-    return res.status(401).send('Invalid signature');
-  }
-
-  const { event, sessionId, txId } = JSON.parse(req.body);
-
-  if (event === 'payment.confirmed') {
-    console.log('Payment confirmed:', txId);
-  }
-
-  res.status(200).send('OK');
-});
-```
-
-### Optional: Drop-in Widget
-
-```html
-<script src="https://kasgate-production.up.railway.app/widget/kasgate.js"></script>
-<kas-gate
-  api-key="your_api_key"
-  amount="10.5"
-  order-id="order_123"
-  theme="dark"
-></kas-gate>
-```
+Every webhook attempt is logged. Go to **Dashboard > Webhook Logs** to see which events fired, the payload sent, your server's response, and any failed deliveries. KasGate retries failed webhooks automatically.
 
 ---
 
