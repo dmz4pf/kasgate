@@ -1,276 +1,198 @@
-# KasGate — Universal Kaspa Payment Widget
+# KasGate — Universal Kaspa Payment Gateway
 
-> Add KAS payments to any website in 3 lines of code
+> Accept Kaspa cryptocurrency payments on any website with a single API call.
 
-KasGate is a drop-in payment widget that enables any website to accept Kaspa payments. Think Stripe Checkout, but for Kaspa.
+[![CI](https://github.com/dmz4pf/kasgate/actions/workflows/ci.yml/badge.svg)](https://github.com/dmz4pf/kasgate/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-71%20passing-brightgreen)](https://github.com/dmz4pf/kasgate/actions)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-## Features
+![KasGate Dashboard](docs/images/dashboard.png)
 
-- 🚀 **Simple Integration** — Add payments with just 3 lines of code
-- ⚡ **Real-time Updates** — WebSocket-powered instant payment notifications
-- 🔒 **Non-Custodial** — Merchants control their own keys (xPub-based HD wallet)
-- 🌐 **Network Agnostic** — Single env var switches between testnet and mainnet
-- 📱 **Responsive** — Works on desktop, tablet, and mobile
-- 🎨 **Themeable** — Light and dark modes, customizable styling
-- 🔗 **Kasware Integration** — One-click payments with browser wallet
-- 📡 **Webhooks** — Server-to-server notifications with HMAC signing
-- 🔄 **Fallbacks** — REST polling backup when WebSocket unavailable
+## Live Demo
 
-## Quick Start
+**[→ kasgate-production.up.railway.app/dashboard](https://kasgate-production.up.railway.app/dashboard)**
 
-### 1. Add the Script
-
-```html
-<script src="https://your-server.com/widget/kasgate.js"></script>
-```
-
-### 2. Add the Widget
-
-```html
-<kas-gate
-  merchant-id="your-merchant-id"
-  amount="10"
-  api-key="your-api-key"
-  server-url="https://your-server.com"
-></kas-gate>
-```
-
-### 3. Done! Accept Kaspa payments.
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/your-org/kasgate.git
-cd kasgate
-
-# Install dependencies
-npm install
-
-# Copy environment file
-cp .env.example .env
-
-# Start development server
-npm run dev
-```
-
-## Configuration
-
-Edit `.env` to configure:
-
-```env
-# Network: "mainnet" or "testnet-10"
-KASPA_NETWORK=testnet-10
-
-# Server Configuration
-PORT=3000
-HOST=localhost
-
-# Your xPub key (get from your HD wallet)
-MERCHANT_XPUB=xpub...
-
-# Webhook secret for signing payloads
-WEBHOOK_SECRET=your_secret_here
-```
-
-## API Endpoints
-
-### Sessions
-
-- `POST /api/v1/sessions` — Create a payment session
-- `GET /api/v1/sessions/:id` — Get session details
-- `GET /api/v1/sessions/:id/status` — Get session status (lightweight)
-- `POST /api/v1/sessions/:id/cancel` — Cancel a pending session
-
-### Merchants
-
-- `POST /api/v1/merchants` — Register a new merchant
-- `GET /api/v1/merchants/me` — Get current merchant
-- `PATCH /api/v1/merchants/me` — Update merchant settings
-- `GET /api/v1/merchants/me/sessions` — Get payment history
-- `GET /api/v1/merchants/me/stats` — Get statistics
-
-### Health
-
-- `GET /health` — Basic health check
-- `GET /health/detailed` — Detailed system status
-- `GET /health/ready` — Kubernetes readiness probe
-- `GET /health/live` — Kubernetes liveness probe
-
-## Widget API
-
-### HTML Attributes
-
-| Attribute | Required | Description |
-|-----------|----------|-------------|
-| `merchant-id` | Yes | Your merchant ID |
-| `amount` | Yes | Payment amount in KAS |
-| `api-key` | Yes | Your API key |
-| `server-url` | No | Server URL (default: current origin) |
-| `order-id` | No | Your internal order ID |
-| `theme` | No | "light" or "dark" |
-
-### JavaScript API
-
-```javascript
-// Create payment programmatically
-const payment = KasGate.createPayment('#container', {
-  merchantId: 'your-merchant-id',
-  amount: '10',
-  apiKey: 'your-api-key',
-  serverUrl: 'https://your-server.com',
-  orderId: 'ORDER-123',
-  metadata: { product: 'Premium Plan' },
-  theme: 'dark',
-  onConfirmed: (session) => {
-    console.log('Payment confirmed!', session.txId);
-  },
-  onExpired: (session) => {
-    console.log('Payment expired');
-  },
-  onError: (error) => {
-    console.error('Payment error:', error);
-  }
-});
-
-// Open payment in modal
-const { element, close } = KasGate.openModal({
-  merchantId: 'your-merchant-id',
-  amount: '10',
-  apiKey: 'your-api-key'
-});
-```
-
-### Events
-
-```javascript
-const element = document.querySelector('kas-gate');
-
-element.addEventListener('statechange', (e) => {
-  console.log('State:', e.detail.state);
-  console.log('Session:', e.detail.session);
-});
-```
-
-## Webhooks
-
-KasGate sends webhooks for payment events:
-
-```json
-{
-  "event": "payment.confirmed",
-  "sessionId": "uuid",
-  "merchantId": "uuid",
-  "amount": "1000000000",
-  "address": "kaspatest:qr...",
-  "txId": "abc123...",
-  "confirmations": 10,
-  "orderId": "ORDER-123",
-  "timestamp": "2024-01-15T12:00:00Z"
-}
-```
-
-### Event Types
-
-- `payment.pending` — Session created
-- `payment.confirming` — Payment detected, awaiting confirmations
-- `payment.confirmed` — Payment fully confirmed
-- `payment.expired` — Session expired without payment
-- `payment.failed` — Payment failed
-
-### Signature Verification
-
-```javascript
-const crypto = require('crypto');
-
-function verifyWebhook(payload, signature, secret) {
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(JSON.stringify(payload));
-  const expected = hmac.digest('hex');
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expected)
-  );
-}
-
-// In your webhook handler:
-const signature = req.headers['x-kasgate-signature'];
-if (!verifyWebhook(req.body, signature, process.env.WEBHOOK_SECRET)) {
-  return res.status(401).send('Invalid signature');
-}
-```
-
-## Demo Sites
-
-Three demo sites are included:
-
-- **Store** (`/demos/store.html`) — E-commerce product checkout
-- **Donate** (`/demos/donate.html`) — Donation page with preset amounts
-- **Tip Jar** (`/demos/tipjar.html`) — Creator tipping with messages
-
-## Development
-
-```bash
-# Start development server with hot reload
-npm run dev
-
-# Build for production
-npm run build
-
-# Run type checking
-npm run typecheck
-
-# Run tests
-npm test
-
-# Build widget only
-npm run build:widget
-```
-
-## Project Structure
-
-```
-kasgate/
-├── src/
-│   ├── config/         # Network configuration
-│   ├── kaspa/          # Kaspa SDK integration
-│   ├── server/         # Express backend
-│   │   ├── routes/     # API endpoints
-│   │   ├── services/   # Business logic
-│   │   ├── middleware/ # Auth, validation, errors
-│   │   ├── websocket/  # Socket.io server
-│   │   └── db/         # SQLite database
-│   ├── widget/         # Frontend widget
-│   │   ├── styles/     # Theme and CSS
-│   │   ├── utils/      # API client, formatters
-│   │   └── integrations/ # Kasware wallet
-│   └── shared/         # Shared constants, validation
-├── demos/              # Demo HTML pages
-├── dist/               # Build output
-└── data/               # SQLite database files
-```
-
-## Tech Stack
-
-- **Widget**: Vanilla JS, Web Components, Shadow DOM
-- **Backend**: Node.js, Express.js, TypeScript
-- **Database**: SQLite (better-sqlite3)
-- **Real-time**: Socket.io
-- **Kaspa SDK**: kaspa (WASM)
-- **Build**: esbuild
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
-
-## License
-
-MIT License — see [LICENSE](LICENSE) for details.
+Create a free account to explore the full dashboard.
 
 ---
 
-Built with 💚 for [Kaspathon 2026](https://kaspathon.dev)
+## What Is KasGate?
+
+KasGate is the Stripe of Kaspa — a payment infrastructure layer that lets any developer accept KAS payments without managing blockchain complexity.
+
+- Merchants register once, get an API key
+- Create a payment session with one API call
+- KasGate generates a unique Kaspa address per payment
+- Webhook fires when the blockchain confirms the transaction
+- Dashboard tracks all payments in real time
+
+---
+
+## Screenshots
+
+| Dashboard | Sessions | Integration |
+|-----------|----------|-------------|
+| ![Dashboard](docs/images/dashboard.png) | ![Sessions](docs/images/sessions.png) | ![Integration](docs/images/integration.png) |
+
+---
+
+## Features
+
+- **Simple API** — Create payments with a single `POST` request
+- **Real-time Updates** — WebSocket-powered instant payment notifications
+- **Non-Custodial** — Merchants control their own keys (xPub HD wallet)
+- **Webhook System** — HMAC-signed server-to-server notifications
+- **Drop-in Widget** — Embed a payment form in 3 lines of HTML
+- **Kasware Integration** — One-click payments with browser wallet
+- **REST Fallback** — Polling backup when WebSocket unavailable
+- **Multi-network** — Single env var switches testnet ↔ mainnet
+- **71 Tests** — Comprehensive test coverage across all critical paths
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Bun |
+| Backend | TypeScript, Express |
+| Frontend | Next.js 14, Tailwind CSS, shadcn/ui |
+| Database | SQLite via better-sqlite3 |
+| Blockchain | Kaspa RPC (testnet-10 / mainnet) |
+| Testing | Vitest |
+| Deployment | Railway |
+
+---
+
+## Quick Start
+
+### 1. Register as a merchant
+
+Visit the [dashboard](https://kasgate-production.up.railway.app/dashboard/register) and create an account with your Kaspa xPub key.
+
+### 2. Create a payment
+
+```javascript
+const response = await fetch('https://kasgate-production.up.railway.app/api/v1/sessions', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': 'your_api_key'
+  },
+  body: JSON.stringify({
+    amount: '10.5',
+    orderId: 'order_123'
+  })
+});
+
+const session = await response.json();
+console.log(session.address); // kaspa:qr... — send payment here
+console.log(session.id);      // sess_abc123 — track status
+```
+
+### 3. Receive payment confirmation
+
+```javascript
+// Your webhook endpoint
+app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  // Verify HMAC-SHA256 signature
+  const signature = req.headers['x-kasgate-signature'];
+  const expected = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET)
+    .update(req.body).digest('hex');
+
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  const { event, sessionId, txId } = JSON.parse(req.body);
+
+  if (event === 'payment.confirmed') {
+    // Fulfill the order
+    console.log('Payment confirmed:', txId);
+  }
+
+  res.status(200).send('OK');
+});
+```
+
+### Optional: Drop-in Widget
+
+```html
+<script src="https://kasgate-production.up.railway.app/widget/kasgate.js"></script>
+<kas-gate
+  api-key="your_api_key"
+  amount="10.5"
+  order-id="order_123"
+  theme="dark"
+></kas-gate>
+```
+
+---
+
+## API Reference
+
+All endpoints require `X-API-Key` header.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/sessions` | Create a payment session |
+| `GET` | `/api/v1/sessions/:id` | Get payment status |
+| `POST` | `/api/v1/sessions/:id/cancel` | Cancel a pending payment |
+| `GET` | `/api/v1/merchants/me` | Get merchant profile |
+| `GET` | `/api/v1/merchants/me/sessions` | List all payments |
+| `GET` | `/api/v1/merchants/me/stats` | Payment statistics |
+| `GET` | `/api/v1/merchants/me/analytics` | Revenue analytics |
+| `GET` | `/api/v1/merchants/me/webhook-logs` | Webhook delivery logs |
+
+---
+
+## Running Locally
+
+```bash
+git clone https://github.com/dmz4pf/kasgate.git
+cd kasgate
+bun install
+cp .env.example .env   # configure your environment
+bun run dev
+```
+
+Visit `http://localhost:3000/dashboard`
+
+### Running Tests
+
+```bash
+bun test
+```
+
+---
+
+## Architecture
+
+```
+┌─────────────────┐     POST /api/v1/sessions      ┌──────────────────┐
+│   Your Website  │ ──────────────────────────────> │  KasGate Server  │
+│  (any frontend) │ <── { address, sessionId } ──── │  (Express + Bun) │
+└─────────────────┘                                 └────────┬─────────┘
+                                                             │
+                          ┌──────────────────────────────────┤
+                          │                                  │
+                   ┌──────▼──────┐                   ┌───────▼───────┐
+                   │  Kaspa RPC  │                   │   SQLite DB   │
+                   │  (Testnet / │                   │  (Payments,   │
+                   │   Mainnet)  │                   │   Merchants)  │
+                   └──────┬──────┘                   └───────────────┘
+                          │
+              Payment confirmed on-chain
+                          │
+                   ┌──────▼──────┐
+                   │   Webhook   │
+                   │  (HMAC sig) │ ──> Your server notified
+                   └─────────────┘
+```
+
+---
+
+## License
+
+MIT
