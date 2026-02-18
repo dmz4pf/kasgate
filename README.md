@@ -67,6 +67,60 @@ KasGate is the Stripe of Kaspa. Register as a merchant, get an API key, and star
 
 ---
 
+## Testing the Full Flow
+
+Here's how to go from zero to receiving a confirmed payment end-to-end.
+
+**Step 1: Get a Kaspa xPub key**
+
+You need a Kaspa wallet that exposes your xPub (extended public key). Use either:
+- **[Kaspa-NG](https://kaspa-ng.org)** — open your wallet, go to Settings → Export xPub
+- **[KasWare](https://kasware.xyz)** — browser extension, go to Account Details → Export xPub
+
+**Step 2: Register as a merchant**
+
+Go to [kasgate-production.up.railway.app/dashboard/register](https://kasgate-production.up.railway.app/dashboard/register), enter your xPub key and create your account. Your API key will be shown on the dashboard.
+
+**Step 3: Create a payment session**
+
+```bash
+curl -X POST https://kasgate-production.up.railway.app/api/v1/sessions \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key" \
+  -d '{"amount": "1", "orderId": "test_001"}'
+```
+
+Response:
+```json
+{
+  "id": "sess_abc123",
+  "address": "kaspa:qr...",
+  "amount": "1",
+  "status": "pending"
+}
+```
+
+**Step 4: Send KAS to the generated address**
+
+Open Kaspa-NG or KasWare and send the exact amount to the `address` from the response. Use testnet-10 for testing — no real KAS needed.
+
+**Step 5: Watch the session confirm**
+
+Poll the session status or check the dashboard:
+
+```bash
+curl https://kasgate-production.up.railway.app/api/v1/sessions/sess_abc123 \
+  -H "X-API-Key: your_api_key"
+```
+
+Status will move from `pending` → `confirmed` once the blockchain picks it up.
+
+**Step 6: Webhook fires**
+
+If you registered a webhook URL, KasGate sends a signed POST to your server with the confirmation. Check **Webhook Logs** on the dashboard to see delivery attempts and responses.
+
+---
+
 ## Quick Start
 
 ### 1. Register as a merchant
