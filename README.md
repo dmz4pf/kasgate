@@ -1,6 +1,6 @@
 # KasGate — Universal Kaspa Payment Gateway
 
-> Accept Kaspa cryptocurrency payments on any website with a single API call.
+Accept Kaspa cryptocurrency payments on any website with a single API call.
 
 [![CI](https://github.com/dmz4pf/kasgate/actions/workflows/ci.yml/badge.svg)](https://github.com/dmz4pf/kasgate/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-71%20passing-brightgreen)](https://github.com/dmz4pf/kasgate/actions)
@@ -11,7 +11,7 @@
 
 ## Live Demo
 
-**[→ kasgate-production.up.railway.app/dashboard](https://kasgate-production.up.railway.app/dashboard)**
+**[kasgate-production.up.railway.app/dashboard](https://kasgate-production.up.railway.app/dashboard)**
 
 Create a free account to explore the full dashboard.
 
@@ -23,13 +23,12 @@ Create a free account to explore the full dashboard.
 
 ## What Is KasGate?
 
-KasGate is the Stripe of Kaspa — a payment infrastructure layer that lets any developer accept KAS payments without managing blockchain complexity.
+KasGate is the Stripe of Kaspa. Register as a merchant, get an API key, and start accepting KAS payments in minutes.
 
-- Merchants register once, get an API key
-- Create a payment session with one API call
+- Create a payment session with one POST request
 - KasGate generates a unique Kaspa address per payment
-- Webhook fires when the blockchain confirms the transaction
-- Dashboard tracks all payments in real time
+- Your webhook fires when the blockchain confirms the transaction
+- Track everything from the dashboard in real time
 
 ---
 
@@ -43,15 +42,14 @@ KasGate is the Stripe of Kaspa — a payment infrastructure layer that lets any 
 
 ## Features
 
-- **Simple API** — Create payments with a single `POST` request
-- **Real-time Updates** — WebSocket-powered instant payment notifications
-- **Non-Custodial** — Merchants control their own keys (xPub HD wallet)
-- **Webhook System** — HMAC-signed server-to-server notifications
-- **Drop-in Widget** — Embed a payment form in 3 lines of HTML
-- **Kasware Integration** — One-click payments with browser wallet
-- **REST Fallback** — Polling backup when WebSocket unavailable
-- **Multi-network** — Single env var switches testnet ↔ mainnet
-- **71 Tests** — Comprehensive test coverage across all critical paths
+- **Simple API**: Create payments with a single `POST` request
+- **Real-time updates**: WebSocket-powered payment notifications
+- **Non-custodial**: Merchants control their own keys via xPub HD wallet
+- **Webhook system**: HMAC-signed server-to-server notifications
+- **Drop-in widget**: Embed a payment form in 3 lines of HTML
+- **Kasware support**: One-click payments with browser wallet
+- **Multi-network**: Single env var switches testnet to mainnet
+- **71 tests**: Unit and integration tests across all critical paths
 
 ---
 
@@ -98,9 +96,7 @@ console.log(session.id);      // sess_abc123 — track status
 ### 3. Receive payment confirmation
 
 ```javascript
-// Your webhook endpoint
 app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
-  // Verify HMAC-SHA256 signature
   const signature = req.headers['x-kasgate-signature'];
   const expected = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET)
     .update(req.body).digest('hex');
@@ -112,7 +108,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
   const { event, sessionId, txId } = JSON.parse(req.body);
 
   if (event === 'payment.confirmed') {
-    // Fulfill the order
     console.log('Payment confirmed:', txId);
   }
 
@@ -157,15 +152,14 @@ All endpoints require `X-API-Key` header.
 git clone https://github.com/dmz4pf/kasgate.git
 cd kasgate
 bun install
-cp .env.example .env   # configure your environment
+cp .env.example .env
 bun run dev
 ```
 
 Visit `http://localhost:3000/dashboard`
 
-### Running Tests
-
 ```bash
+# Run tests
 bun test
 ```
 
