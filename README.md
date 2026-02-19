@@ -1,4 +1,4 @@
-# KasGate — Universal Kaspa Payment Gateway
+# KasGate: Universal Kaspa Payment Gateway
 
 Accept Kaspa cryptocurrency payments on any website with a single API call.
 
