@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KasGate Pitch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal: #00c9a7;
+      --teal-dark: #009e84;
+      --navy: #0d1b2a;
+      --navy-mid: #1a2e42;
+      --text: #1a1a2e;
+      --text-mid: #4a4a6a;
+      --text-light: #8888aa;
+      --border: #e2e8f0;
+      --bg: #ffffff;
+      --bg-light: #f8fafc;
+      --tag-bg: #eef2f7;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 48px 64px;
+    }
+
+    /* ─── HEADER ─────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 6px;
+    }
+
+    .logo-mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .logo-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .brand-name {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--navy);
+    }
+
+    .tagline {
+      font-size: 13px;
+      color: var(--text-mid);
+      font-weight: 400;
+      margin-bottom: 32px;
+      margin-top: 2px;
+      padding-bottom: 28px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    /* ─── SECTION LABEL ──────────────────────────────── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      color: var(--text-light);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    /* ─── SECTION WRAPPER ────────────────────────────── */
+    .section {
+      padding: 28px 0;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .section:last-of-type {
+      border-bottom: none;
+    }
+
+    /* ─── WHAT WE DO ─────────────────────────────────── */
+    .what-we-do p {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.75;
+      margin-bottom: 12px;
+    }
+
+    .what-we-do p:last-child { margin-bottom: 0; }
+
+    .what-we-do strong {
+      color: var(--navy);
+      font-weight: 600;
+    }
+
+    /* ─── HOW IT WORKS GRID ──────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px 40px;
+    }
+
+    .feature-block h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+
+    .feature-block p {
+      font-size: 12.5px;
+      color: var(--text-mid);
+      line-height: 1.7;
+    }
+
+    /* ─── TRACTION ───────────────────────────────────── */
+    .traction-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 201, 167, 0.12);
+      border: 1px solid rgba(0, 201, 167, 0.3);
+      color: var(--teal-dark);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      margin-bottom: 18px;
+    }
+
+    .traction-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .stat-box {
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-box .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--navy);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .stat-box .stat-label {
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--text-light);
+      text-transform: uppercase;
+    }
+
+    .integrations-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--text-light);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .integrations-list {
+      font-size: 12.5px;
+      color: var(--text-mid);
+      line-height: 2;
+    }
+
+    .integrations-list span {
+      color: var(--border);
+      margin: 0 6px;
+    }
+
+    /* ─── TECH STACK ─────────────────────────────────── */
+    .stack-group {
+      margin-bottom: 14px;
+    }
+
+    .stack-group:last-child { margin-bottom: 0; }
+
+    .stack-group-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: var(--text-light);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      background: var(--tag-bg);
+      color: var(--text-mid);
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .tag.teal {
+      background: rgba(0, 201, 167, 0.1);
+      color: var(--teal-dark);
+      border-color: rgba(0, 201, 167, 0.25);
+    }
+
+    /* ─── COMMUNITY GRID ─────────────────────────────── */
+    .community-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px 40px;
+    }
+
+    .community-block h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+
+    .community-block p {
+      font-size: 12.5px;
+      color: var(--text-mid);
+      line-height: 1.7;
+    }
+
+    /* ─── FOOTER ─────────────────────────────────────── */
+    .footer {
+      margin-top: 36px;
+      padding-top: 20px;
+      border-top: 1.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      color: var(--text-mid);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .footer-links a:hover { color: var(--teal-dark); }
+
+    .footer-links .sep {
+      color: var(--border);
+      font-size: 14px;
+    }
+
+    .footer-copy {
+      font-size: 11px;
+      color: var(--text-light);
+    }
+
+    .open-to {
+      font-size: 11.5px;
+      color: var(--teal-dark);
+      font-weight: 500;
+      font-style: italic;
+    }
+
+    /* ─── PRINT ──────────────────────────────────────── */
+    @media print {
+      body { padding: 32px; max-width: 100%; }
+      @page { margin: 0.5in; size: A4; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-mark">
+      <img src="../dashboard/public/logo.png" alt="KasGate logo" />
+    </div>
+    <span class="brand-name">KasGate</span>
+  </div>
+  <p class="tagline">Stripe-style payment infrastructure for Web3 merchants.</p>
+
+  <!-- WHAT WE DO -->
+  <div class="section what-we-do">
+    <div class="section-label">W H A T &nbsp; W E &nbsp; D O</div>
+    <p>Getting paid in crypto is still broken. There is no standard way for a merchant to create a payment request, watch for on-chain confirmation, and fire a webhook to their backend. That workflow is what Stripe solved for fiat a decade ago. Every team that wants to accept cryptocurrency today is building their own fragile version from scratch.</p>
+    <p><strong>KasGate is the full payment infrastructure stack, ready to deploy.</strong> One API call creates a unique non-custodial payment address per order. A signed webhook fires the moment a transaction confirms on-chain. A dashboard handles sessions, analytics, and delivery logs. A drop-in widget embeds the entire payment UI in three lines of HTML.</p>
+    <p>The first production version runs on Kaspa, chosen for its near-instant DAG confirmations and zero transaction fees. The session engine, webhook system, merchant dashboard, and REST API are chain-agnostic. Porting to another chain means replacing three service files. Nothing else changes.</p>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="section">
+    <div class="section-label">H O W &nbsp; I T &nbsp; W O R K S</div>
+    <div class="features-grid">
+
+      <div class="feature-block">
+        <h3>Session API</h3>
+        <p>One POST request creates a payment session with a unique non-custodial address per order, derived using BIP-32/44 HD wallet standards. Merchants never hold private keys. Each session moves through a strict status lifecycle: pending, confirming, then confirmed.</p>
+      </div>
+
+      <div class="feature-block">
+        <h3>Webhook Engine</h3>
+        <p>HMAC-SHA256 signed notifications fire on payment detection and on confirmation. Failed deliveries retry automatically with exponential backoff. Every attempt is logged so merchants can see exactly what fired, when it fired, and how their server responded.</p>
+      </div>
+
+      <div class="feature-block">
+        <h3>Drop-in Widget</h3>
+        <p>A fully hosted payment UI that embeds in three lines of HTML. Shows the payment address, QR code, and a live confirmation countdown. No backend integration needed to get started. Drop it into any webpage and it works out of the box.</p>
+      </div>
+
+      <div class="feature-block">
+        <h3>Merchant Dashboard</h3>
+        <p>A full Next.js dashboard with real-time WebSocket updates. Covers session management, revenue analytics, API key rotation, and webhook delivery logs. Built to the standard a merchant expects from a payment product, not a developer tool.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TRACTION -->
+  <div class="section">
+    <div class="section-label">T R A C T I O N</div>
+
+    <div class="traction-badge">
+      🚀 Production Deployed · Open Beta
+    </div>
+
+    <div class="traction-stats">
+      <div class="stat-box">
+        <span class="stat-value">Live</span>
+        <span class="stat-label">kasgate-production.up.railway.app</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-value">71</span>
+        <span class="stat-label">Tests Passing Across All Critical Paths</span>
+      </div>
+    </div>
+
+    <div class="integrations-label">Supported Interfaces</div>
+    <div class="integrations-list">
+      REST API
+      <span>·</span>
+      WebSocket Real-time
+      <span>·</span>
+      Drop-in Widget
+      <span>·</span>
+      KasWare Wallet
+      <span>·</span>
+      Kaspa-NG
+      <span>·</span>
+      Testnet + Mainnet
+    </div>
+  </div>
+
+  <!-- TECH STACK -->
+  <div class="section">
+    <div class="section-label">T E C H &nbsp; S T A C K</div>
+
+    <div class="stack-group">
+      <div class="stack-group-label">Backend & Infrastructure</div>
+      <div class="tags">
+        <span class="tag">Bun</span>
+        <span class="tag">TypeScript</span>
+        <span class="tag">Express</span>
+        <span class="tag">SQLite</span>
+        <span class="tag">Vitest · 71 tests</span>
+        <span class="tag">Docker</span>
+        <span class="tag">Railway</span>
+        <span class="tag">GitHub Actions CI/CD</span>
+      </div>
+    </div>
+
+    <div class="stack-group">
+      <div class="stack-group-label">Frontend</div>
+      <div class="tags">
+        <span class="tag">Next.js 14</span>
+        <span class="tag">Tailwind CSS</span>
+        <span class="tag">shadcn/ui</span>
+        <span class="tag">WebSocket (real-time)</span>
+      </div>
+    </div>
+
+    <div class="stack-group">
+      <div class="stack-group-label">Chain</div>
+      <div class="tags">
+        <span class="tag teal">Kaspa (primary)</span>
+        <span class="tag">HD Wallet BIP-32/44</span>
+        <span class="tag">UTXO + Account-based portability</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMUNITY -->
+  <div class="section">
+    <div class="section-label">P R O J E C T</div>
+    <div class="community-grid">
+
+      <div class="community-block">
+        <h3>Open Source</h3>
+        <p>The full KasGate codebase is public on GitHub. Developers can inspect the session architecture, contribute chain adapters, and build integrations on top of the public API. All design decisions are visible and documented.</p>
+      </div>
+
+      <div class="community-block">
+        <h3>Demo</h3>
+        <p>A complete walkthrough of the payment flow, from merchant registration through to webhook delivery, is available on YouTube. The live instance on Railway accepts real testnet payments with no local setup.</p>
+      </div>
+
+      <div class="community-block">
+        <h3>Public API</h3>
+        <p>The API is live and open to query. Developers can create sessions, poll payment status, and test webhook delivery against a running production instance without cloning the repo or configuring anything locally.</p>
+      </div>
+
+      <div class="community-block">
+        <h3>Chain Portability</h3>
+        <p>The blockchain layer sits in three service files: address derivation, transaction monitoring, and confirmation tracking. Everything else is chain-agnostic. Porting to EVM, Solana, or any UTXO chain is scoped to those three files.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-links">
+      <a href="https://kasgate-production.up.railway.app" target="_blank">🌐 kasgate-production.up.railway.app</a>
+      <span class="sep">·</span>
+      <a href="https://x.com/Kas_Gate" target="_blank">𝕏 @Kas_Gate</a>
+      <span class="sep">·</span>
+      <a href="https://github.com/dmustapha/kasgate" target="_blank">🐙 github.com/dmustapha/kasgate</a>
+      <span class="sep">·</span>
+      <a href="mailto:damilolamustaphaa@gmail.com">✉️ damilolamustaphaa@gmail.com</a>
+    </div>
+    <div>
+      <span class="open-to">Open to partnerships, integrations, and strategic discussions.</span>
+      <div class="footer-copy" style="margin-top:4px;">© 2026 KasGate</div>
+    </div>
+  </div>
+
+</body>
+</html>
