@@ -286,6 +286,13 @@ bun test
 
 ---
 
+## Contact
+
+- X: [@Kas_Gate](https://x.com/Kas_Gate)
+- Email: [damilolamustaphaa@gmail.com](mailto:damilolamustaphaa@gmail.com)
+
+---
+
 ## License
 
 MIT
